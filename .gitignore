@@ -33,6 +33,7 @@ lerna-debug.log*
 .temp/
 .tmp/
 **/.vite-temp/
+**/*.tsbuildinfo
 
 # Runtime data
 pids/

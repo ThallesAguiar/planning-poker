@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: planning
+      POSTGRES_PASSWORD: planning
+      POSTGRES_DB: planning_poker
+    ports: ['5432:5432']
+    healthcheck: { test: ['CMD-SHELL', 'pg_isready -U planning -d planning_poker'], interval: 5s, timeout: 5s, retries: 10 }
+  redis:
+    image: redis:7-alpine
+    ports: ['6380:6379']
+    healthcheck: { test: ['CMD', 'redis-cli', 'ping'], interval: 5s, timeout: 3s, retries: 10 }
+  api:
+    build: ./api
+    container_name: planning-pocker
+    environment:
+      DATABASE_URL: postgresql://planning:planning@postgres:5432/planning_poker?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+      PORT: 3000
+    ports: ['3000:3000']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck: { test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:3000/health'], interval: 10s, timeout: 5s, retries: 5 }

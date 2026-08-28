@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+enum RoomStatus {
+  aberta
+  em_andamento
+  encerrada
+}
+enum StoryStatus {
+  pendente
+  em_votacao
+  em_discussao
+  estimada
+  pulada
+}
+enum ParticipantRole {
+  PO
+  Dev
+  QA
+  ScrumMaster
+  Observador
+  IA_Agente
+}
+enum RoomVisibility {
+  PUBLIC
+  PRIVATE
+}
+model User {
+  id String @id @default(cuid())
+  name String
+  avatarUrl String?
+  email String?
+  isGuest Boolean @default(true)
+  createdAt DateTime @default(now())
+  participants RoomParticipant[]
+}
+model Room {
+  id String @id @default(cuid())
+  inviteCode String @unique
+  name String
+  status RoomStatus @default(aberta)
+  ownerId String
+  visibility RoomVisibility @default(PUBLIC)
+  passwordHash String?
+  createdAt DateTime @default(now())
+  config RoomConfig?
+  participants RoomParticipant[]
+  stories Story[]
+  messages ChatMessage[]
+  reports SprintReport[]
+}
+model RoomConfig {
+  id String @id @default(cuid())
+  roomId String @unique
+  deckType String
+  deckValues Json
+  tempoReflexaoSegundos Int @default(120)
+  tempoDiscussaoSegundos Int @default(300)
+  permiteParticipantesIA Boolean @default(false)
+  maxParticipantes Int @default(12)
+  papeisPermitidos Json
+  votoAnonimo Boolean @default(false)
+  revelacaoAutomatica Boolean @default(false)
+  criterioConsenso String @default("decisao_po")
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+model RoomParticipant {
+  id String @id @default(cuid())
+  roomId String
+  userId String
+  role ParticipantRole
+  isAI Boolean @default(false)
+  status String @default("ativo")
+  joinedAt DateTime @default(now())
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  votes Vote[]
+  messages ChatMessage[]
+  @@unique([roomId, userId])
+}
+model Story {
+  id String @id @default(cuid())
+  roomId String
+  title String
+  description String @default("")
+  order Int
+  status StoryStatus @default(pendente)
+  finalValue String?
+  criterion String?
+  totalSeconds Int @default(0)
+  rounds Int @default(0)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  voteRounds VoteRound[]
+  messages ChatMessage[]
+}
+model VoteRound {
+  id String @id @default(cuid())
+  storyId String
+  number Int
+  startedAt DateTime @default(now())
+  endedAt DateTime?
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  votes Vote[]
+}
+model Vote {
+  id String @id @default(cuid())
+  voteRoundId String
+  participantId String
+  value String
+  castAt DateTime @default(now())
+  revealed Boolean @default(false)
+  round VoteRound @relation(fields: [voteRoundId], references: [id], onDelete: Cascade)
+  participant RoomParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  @@unique([voteRoundId, participantId])
+}
+model ChatMessage {
+  id String @id @default(cuid())
+  roomId String
+  storyId String?
+  participantId String
+  text String
+  type String
+  createdAt DateTime @default(now())
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  story Story? @relation(fields: [storyId], references: [id], onDelete: SetNull)
+  participant RoomParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+}
+model SprintReport {
+  id String @id @default(cuid())
+  roomId String
+  generatedAt DateTime @default(now())
+  summary Json
+  urlExportCsv String?
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
