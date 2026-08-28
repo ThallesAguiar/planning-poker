@@ -17,6 +17,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] `api/Dockerfile` multi-stage com Node Alpine.
 - [x] Variaveis basicas via ambiente: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` e `PORT`.
 - [x] README com comandos de execucao, portas e estrutura.
+- [x] Constituicao do projeto definida em `.specify/memory/constitution.md` e templates Spec Kit sincronizados.
 
 ### Pendente
 
@@ -217,6 +218,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Smoke test Socket.IO com dois clientes.
 - [x] Smoke test completo: dois clientes, chat, apresentacao, votos, revelacao e discussao.
 - [x] Smoke test de sala privada: hash oculto, senha invalida rejeitada e senha correta aceita.
+- [x] Validacao da constituicao: sem placeholders de template, versao 1.0.0 consistente e datas ISO.
 
 ### Pendente
 

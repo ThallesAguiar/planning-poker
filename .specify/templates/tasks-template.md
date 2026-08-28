@@ -250,3 +250,6 @@ With multiple developers:
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+- Apply project constitution gates: shared contracts before consumers, server-authoritative realtime,
+  persistence and recovery, role-bound security, and layer-appropriate verification.
+- Update root `TASKS.md` after relevant work; mark completion only after implementation and verification.

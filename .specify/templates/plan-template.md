@@ -40,7 +40,12 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Shared types and Socket.IO event contracts precede gateway and frontend work.
+- Server-authoritative timers, vote revelation, permissions, and room transitions are preserved.
+- PostgreSQL persistence, recovery, migrations, and Redis scaling responsibilities are explicit.
+- Role authorization, payload validation, secret handling, and private-room access are covered.
+- Verification plan covers affected layers, realtime multi-client flows, and Docker validation.
+- `TASKS.md` impact and prompt traceability are identified.
 
 ## Project Structure
 
