@@ -18,3 +18,8 @@ Regras:
 ## Verificacao
 
 Antes de concluir, leia `TASKS.md`, confirme que os itens refletem o estado real do repositorio e inclua arquivos, comandos ou testes relevantes quando ajudarem a localizar o trabalho.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
