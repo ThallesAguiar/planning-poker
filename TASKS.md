@@ -154,6 +154,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Tela da sala redesenhada no padrao mesa oval escura do mockup, com topo compacto, fase/timer e chat lateral.
 - [x] Telas frontend de minhas salas, perfil e configuracoes adicionadas com navegacao lateral.
 - [x] Navegacao de entrada normaliza codigo, rota ou URL de sala antes de abrir `/room/:code`.
+- [x] Entrada pela home autentica e abre direto mesa de poker, inclusive em sala privada com senha.
 
 ### Pendente
 
@@ -226,6 +227,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos ajustar a tela inicial ao mockup enviado.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos redesenhar sala e adicionar telas de minhas salas, perfil e configuracoes.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos corrigir normalizacao do caminho de entrada em sala.
+- [x] Frontend: `npm run test:e2e` validou em Chromium criacao de sala privada e entrada por codigo+senha direto na mesa.
 - [x] API: `npx prisma validate`.
 - [x] API: `npm run build`.
 - [x] API: `npm test`.
@@ -299,6 +301,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [ ] Testes de reconexao e restauracao de estado.
 - [ ] Testes com Redis adapter e multiplas instancias.
 - [ ] Testes E2E frontend em dois navegadores.
+- [~] Teste Playwright Chromium cobre criacao de sala privada e entrada por codigo+senha direto para mesa em `frontend/tests/room-entry.spec.ts`; segundo navegador ainda pendente.
 - [ ] Testes de exportacao PDF/CSV.
 - [~] Testes unitarios de timeout, saida invalida, chave ausente e limite de custo adicionados; testes de integracao/fallback humano pendentes.
 - [x] Testes unitarios de deadline, substituicao e cancelamento do timer em `api/src/realtime/timer.service.spec.ts`.
