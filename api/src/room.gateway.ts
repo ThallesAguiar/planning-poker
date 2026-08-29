@@ -42,7 +42,13 @@ export class RoomGateway {
   @SubscribeMessage('room:join')
   async join(@ConnectedSocket() client: Client, @MessageBody() payload: { roomId: string; name: string; avatar: string; role?: Role; sessionId?: string; password?: string; token?: string }) {
     const roomKey = payload.roomId.trim();
-    const state = await this.loadState(roomKey);
+    let state: State;
+    try {
+      state = await this.loadState(roomKey);
+    } catch {
+      client.emit('room:error', { message: 'ROOM_NOT_FOUND' });
+      return;
+    }
     if (state.visibility === 'PRIVATE') {
       if (!payload.password) { client.emit('room:error', { message: 'PASSWORD_REQUIRED' }); return; }
       if (!state.passwordHash || !(await bcrypt.compare(payload.password, state.passwordHash))) { client.emit('room:error', { message: 'INVALID_PASSWORD' }); return; }
@@ -184,18 +190,9 @@ export class RoomGateway {
     if (restored?.dbRoomId && restored?.config && restored?.participants && restored?.stories) { this.states.set(roomKey, restored as unknown as State); return restored as unknown as State; }
     const include = { config: true, stories: { orderBy: { order: 'asc' as const } }, participants: { include: { user: true } }, messages: { orderBy: { createdAt: 'asc' as const } } };
     const existing = await this.prisma.room.findFirst({ where: { OR: [{ id: roomKey }, { inviteCode: roomKey.toUpperCase() }] }, include });
-    let roomId = existing?.id;
-    if (!roomId) {
-      try {
-        const created = await this.prisma.room.create({ data: { name: 'Planning Poker', inviteCode: roomKey.toUpperCase(), ownerId: 'pending', config: { create: { ...defaultConfig, deckValues: defaultConfig.deckValues, papeisPermitidos: defaultConfig.papeisPermitidos } } as any } });
-        roomId = created.id;
-      } catch (error: any) {
-        if (error?.code !== 'P2002') throw error;
-        roomId = (await this.prisma.room.findUnique({ where: { inviteCode: roomKey.toUpperCase() } }))?.id;
-      }
-    }
+    const roomId = existing?.id;
     const room = await this.prisma.room.findUnique({ where: { id: roomId }, include });
-    if (!room) throw new Error('Room could not be loaded');
+    if (!room) throw new Error('ROOM_NOT_FOUND');
     const config = { ...defaultConfig, ...(room.config ? { ...room.config, papeisPermitidos: room.config.papeisPermitidos as Role[], deckValues: room.config.deckValues as VoteValue[] } : {}) } as Config;
     const state: State = { roomId: roomKey, dbRoomId: room.id, name: room.name, code: room.inviteCode, status: room.status as State['status'], visibility: room.visibility as State['visibility'], passwordHash: room.passwordHash, ownerId: room.ownerId, config, participants: room.participants.map((item) => ({ id: item.id, userId: item.userId, name: item.user.name, avatar: item.user.avatarUrl ?? '', role: item.role as Role, isAI: item.isAI, connected: false, hasVoted: false })), stories: room.stories, phase: 'lobby', votes: [], remainingSeconds: null, timerType: null, messages: room.messages.map((item) => ({ id: item.id, author: room!.participants.find((person) => person.id === item.participantId)?.user.name ?? 'Sistema', role: room!.participants.find((person) => person.id === item.participantId)?.role as Role ?? 'Dev', text: item.text, type: item.type as Message['type'], createdAt: item.createdAt.toISOString() })) };
     const activeStory = room.stories.find((item) => item.status === 'em_votacao' || item.status === 'em_discussao');

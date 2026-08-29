@@ -151,10 +151,15 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Estilos da entrada e mesa reorganizados: botoes com estados, checkbox acessivel, campos alinhados e responsividade base.
 - [x] Campos de senha com toggle visual para mostrar ou ocultar o valor.
 - [x] Tela inicial ajustada para layout visual com apresentacao, cartas em leque, painel compacto e dica inferior.
+- [x] Tela inicial refinada para o mock escuro com headline em destaque, painel creme e selecao de avatar no ingresso.
+- [x] Tela inicial raiz voltou a exibir o leque de cartas e foi reduzida para caber sem scroll vertical em viewport desktop comum.
+- [x] Tela inicial recebeu regras responsivas por altura (`max-height`) para evitar scroll em desktops com viewport mais baixa.
+- [x] Entrada em sala privada nao faz fallback local quando `POST /rooms/:id/join` falha com `404`; usuario fica fora da mesa com erro visivel.
 - [x] Tela da sala redesenhada no padrao mesa oval escura do mockup, com topo compacto, fase/timer e chat lateral.
 - [x] Telas frontend de minhas salas, perfil e configuracoes adicionadas com navegacao lateral.
 - [x] Navegacao de entrada normaliza codigo, rota ou URL de sala antes de abrir `/room/:code`.
 - [x] Entrada pela home autentica e abre direto mesa de poker, inclusive em sala privada com senha.
+- [x] Rota direta `/room/:code` reaproveita a mesma tela inicial de entrada, sem segunda tela duplicada.
 
 ### Pendente
 
@@ -228,6 +233,11 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos redesenhar sala e adicionar telas de minhas salas, perfil e configuracoes.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos corrigir normalizacao do caminho de entrada em sala.
 - [x] Frontend: `npm run test:e2e` validou em Chromium criacao de sala privada e entrada por codigo+senha direto na mesa.
+- [x] Frontend: `npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` validou home e rota direta `/room/:code` sem tela legada duplicada.
+- [x] Frontend: `npm run build`, `npm run lint` e `npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` executados apos refinamento visual final da tela inicial.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos restaurar o leque de cartas e reduzir a altura visual da home.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos compactar a home para viewports desktop de menor altura.
+- [x] API: `npm run build` e `npm test`; Frontend: `npm run build`, `npm run lint` e `npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` executados apos bloquear fallback local em senha errada ou sala ausente.
 - [x] API: `npx prisma validate`.
 - [x] API: `npm run build`.
 - [x] API: `npm test`.

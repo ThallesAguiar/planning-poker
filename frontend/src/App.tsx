@@ -68,7 +68,9 @@ export function App({ mode }: { mode: "home" | "room" }) {
       setJoinError(
         next.message === "PASSWORD_REQUIRED"
           ? "Esta sala exige senha."
-          : "Senha invalida ou sala indisponivel.",
+          : next.message === "ROOM_NOT_FOUND"
+            ? "Sala nao encontrada."
+            : "Senha invalida ou sala indisponivel.",
       );
       setJoined(false);
       socket.disconnect();
@@ -93,6 +95,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
 
   useEffect(() => {
     if (mode !== "room" || !routeCode) return;
+    setRoomId(routeCode);
+    setHomeMode("join");
     fetch(`${API}/rooms/${encodeURIComponent(routeCode)}`)
       .then((response) => (response.ok ? response.json() : null))
       .then((room) => setRoomIsPrivate(room?.visibility === "PRIVATE"))
@@ -112,7 +116,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
     20,
     40,
     100,
-    "café",
+    "cafe",
     "?",
   ];
   const progress = state
@@ -125,33 +129,35 @@ export function App({ mode }: { mode: "home" | "room" }) {
           100,
       )
     : 0;
+
   const connectRoom = async (target: string, password = roomPassword) => {
     setJoinError("");
-    if (!target) return;
+    if (!target) return false;
+
     sessionStorage.setItem(
       "planning-poker-player",
       JSON.stringify({ name, avatar }),
     );
+
     let sessionId =
       localStorage.getItem(`planning-poker-session:${target}`) ?? "";
     let token = localStorage.getItem(`planning-poker-token:${target}`) ?? "";
+
     if (!token) {
-      const response = await fetch(
-        `${API}/rooms/${encodeURIComponent(target)}/join`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            name,
-            avatar,
-            role: "Dev",
-            password: password || undefined,
-          }),
-        },
-      );
+      const response = await fetch(`${API}/rooms/${encodeURIComponent(target)}/join`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name,
+          avatar,
+          role: "Dev",
+          password: password || undefined,
+        }),
+      });
+
       if (response.status === 404) {
-        sessionId ||= crypto.randomUUID();
-        localStorage.setItem(`planning-poker-session:${target}`, sessionId);
+        setJoinError("Sala nao encontrada.");
+        return false;
       } else if (!response.ok) {
         setJoinError("Senha invalida ou sala indisponivel.");
         return false;
@@ -163,10 +169,12 @@ export function App({ mode }: { mode: "home" | "room" }) {
         localStorage.setItem(`planning-poker-token:${target}`, token);
       }
     }
+
     sessionStorage.setItem(
       `planning-poker-pending-join:${target}`,
       JSON.stringify({ password }),
     );
+
     const emitJoin = () =>
       socket.emit("room:join", {
         roomId: target,
@@ -177,14 +185,17 @@ export function App({ mode }: { mode: "home" | "room" }) {
         token,
         password: password || undefined,
       });
+
     if (socket.connected) emitJoin();
     else {
       socket.once("connect", emitJoin);
       socket.connect();
     }
+
     setJoined(true);
     return true;
   };
+
   const join = async (event: FormEvent) => {
     event.preventDefault();
     const target = mode === "room" ? routeCode : normalizeRoomCode(roomId);
@@ -193,6 +204,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
       navigate(`/room/${encodeURIComponent(target)}`);
     }
   };
+
   useEffect(() => {
     if (mode !== "room" || !routeCode || joined) return;
     const token = localStorage.getItem(`planning-poker-token:${routeCode}`);
@@ -203,17 +215,21 @@ export function App({ mode }: { mode: "home" | "room" }) {
     const password = pending ? JSON.parse(pending).password : roomPassword;
     sessionStorage.removeItem(`planning-poker-pending-join:${routeCode}`);
     void connectRoom(routeCode, password);
-  }, [joined, mode, routeCode]);
+  }, [joined, mode, routeCode, roomPassword]);
+
   const submitHome = async (event: FormEvent) => {
     event.preventDefault();
-    if (homeMode === "join") {
-      join(event);
+
+    if (mode === "room" || homeMode === "join") {
+      await join(event);
       return;
     }
+
     if (createPrivate && roomPassword.length < 4) {
       setJoinError("Senha privada precisa ter pelo menos 4 caracteres.");
       return;
     }
+
     const response = await fetch(`${API}/rooms`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -223,10 +239,12 @@ export function App({ mode }: { mode: "home" | "room" }) {
         password: createPrivate ? roomPassword : undefined,
       }),
     });
+
     if (!response.ok) {
       setJoinError("Nao foi possivel criar a sala.");
       return;
     }
+
     const created = await response.json();
     const connected = await connectRoom(
       created.code,
@@ -234,6 +252,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
     );
     if (connected) navigate(`/room/${encodeURIComponent(created.code)}`);
   };
+
   const cast = () => {
     if (selected !== null)
       socket.emit("vote:cast", {
@@ -241,32 +260,39 @@ export function App({ mode }: { mode: "home" | "room" }) {
         value: selected as any,
       });
   };
+
   const sendMessage = (event: FormEvent) => {
     event.preventDefault();
     if (!message.trim()) return;
     socket.emit("chat:message", { text: message });
     setMessage("");
   };
+
   const configureAi = (enabled: boolean) => {
     setAiStatus("idle");
     socket.emit("room:configure", {
       config: { permiteParticipantesIA: enabled },
     });
   };
+
   const requestAiVote = () => {
     setAiStatus("idle");
     socket.emit("ai:requestVote");
   };
 
-  if (mode === "home")
+  const isRoomEntry = mode === "room" && !joined;
+
+  if (mode === "home" || isRoomEntry)
     return (
       <main className="entry home-entry">
         <section className="home-hero" aria-label="Planning Poker">
-          <div className="home-logo">PP</div>
-          <h1>Planning Poker</h1>
+          <p className="home-kicker">PLANNING POKER</p>
+          <h1>
+            Faca a estimativa
+            <span> ganhar vida.</span>
+          </h1>
           <p>
-            Estimativas melhores, conversas mais produtivas e times mais
-            alinhados.
+            Uma mesa colaborativa para times que pensam melhor juntos.
           </p>
           <div className="entry-card-fan" aria-hidden="true">
             {ENTRY_CARDS.map((value) => (
@@ -274,25 +300,39 @@ export function App({ mode }: { mode: "home" | "room" }) {
             ))}
           </div>
         </section>
+
         <form className="join-panel" onSubmit={submitHome}>
-          <div className="brand-mark">â™ </div>
-          <div className="mode-switch">
-            <button
-              type="button"
-              className={homeMode === "join" ? "is-active" : ""}
-              onClick={() => setHomeMode("join")}
-            >
-              Entrar
-            </button>
-            <button
-              type="button"
-              className={homeMode === "create" ? "is-active" : ""}
-              onClick={() => setHomeMode("create")}
-            >
-              Criar sala
-            </button>
-          </div>
-          <h2>{homeMode === "join" ? "Entrar na mesa" : "Criar nova sala"}</h2>
+          <div className="brand-mark">♠</div>
+
+          {mode === "home" && (
+            <div className="mode-switch">
+              <button
+                type="button"
+                className={homeMode === "join" ? "is-active" : ""}
+                onClick={() => setHomeMode("join")}
+              >
+                Entrar
+              </button>
+              <button
+                type="button"
+                className={homeMode === "create" ? "is-active" : ""}
+                onClick={() => setHomeMode("create")}
+              >
+                Criar sala
+              </button>
+            </div>
+          )}
+
+          <h2>
+            {mode === "room"
+              ? roomIsPrivate
+                ? "Entrar na sala privada"
+                : "Entrar na mesa"
+              : homeMode === "join"
+                ? "Entrar na mesa"
+                : "Criar nova sala"}
+          </h2>
+
           <label>
             Nome
             <input
@@ -301,36 +341,56 @@ export function App({ mode }: { mode: "home" | "room" }) {
               required
             />
           </label>
-          {homeMode === "join" ? (
+
+          {mode === "room" || homeMode === "join" ? (
             <>
-            <label>
-              Código da sala
-              <input
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Senha da sala
-              <div className="password-field">
+              <label>
+                Codigo da sala
                 <input
-                  type={showPassword ? "text" : "password"}
-                  value={roomPassword}
-                  onChange={(e) => setRoomPassword(e.target.value)}
-                  placeholder="Opcional"
+                  value={roomId}
+                  onChange={(e) => setRoomId(e.target.value)}
+                  required
+                  readOnly={mode === "room"}
                 />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                  aria-pressed={showPassword}
-                  onClick={() => setShowPassword((current) => !current)}
-                >
-                  {showPassword ? "ðŸ™ˆ" : "ðŸ‘"}
-                </button>
+              </label>
+
+              <label>
+                Senha da sala
+                <div className="password-field">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={roomPassword}
+                    onChange={(e) => setRoomPassword(e.target.value)}
+                    placeholder="Opcional"
+                    required={mode === "room" && roomIsPrivate}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    aria-pressed={showPassword}
+                    onClick={() => setShowPassword((current) => !current)}
+                  >
+                    {showPassword ? "🙈" : "👁"}
+                  </button>
+                </div>
+              </label>
+
+              <div className="avatar-pick">
+                <span>Escolha seu avatar</span>
+                <div>
+                  {AVATARS.map((item) => (
+                    <button
+                      type="button"
+                      className={avatar === item ? "active" : ""}
+                      onClick={() => setAvatar(item)}
+                      key={item}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </label>
             </>
           ) : (
             <>
@@ -342,6 +402,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
                   required
                 />
               </label>
+
               <label>
                 <input
                   type="checkbox"
@@ -350,6 +411,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
                 />{" "}
                 Sala privada
               </label>
+
               {createPrivate && (
                 <label>
                   Senha
@@ -377,111 +439,24 @@ export function App({ mode }: { mode: "home" | "room" }) {
               )}
             </>
           )}
+
           {joinError && <p role="alert">{joinError}</p>}
+
           <button className="primary" type="submit">
-            <span>{homeMode === "join" ? "Entrar na sala" : "Criar sala"}</span>
+            <span>
+              {mode === "room" || homeMode === "join"
+                ? "Entrar na sala"
+                : "Criar sala"}
+            </span>
             <span aria-hidden="true">-&gt;</span>
           </button>
+
           <p className="home-tip">
             <span aria-hidden="true">i</span>
-            {homeMode === "join"
+            {mode === "room" || homeMode === "join"
               ? "Dica: peca o codigo da sala para o Product Owner iniciar a partida."
               : "Dica: salas privadas pedem uma senha com pelo menos 4 caracteres."}
           </p>
-        </form>
-      </main>
-    );
-  if (mode === "room" && roomIsPrivate && !joined)
-    return (
-      <main className="entry">
-        <form className="join-panel" onSubmit={join}>
-          <h2>Entrar na sala privada</h2>
-          <p>{routeCode}</p>
-          <label>
-            Nome
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Senha
-            <div className="password-field">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={roomPassword}
-                onChange={(e) => setRoomPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                aria-pressed={showPassword}
-                onClick={() => setShowPassword((current) => !current)}
-              >
-                {showPassword ? "🙈" : "👁"}
-              </button>
-            </div>
-          </label>
-          {joinError && <p role="alert">{joinError}</p>}
-          <button className="primary" type="submit">
-            Entrar na sala
-          </button>
-        </form>
-      </main>
-    );
-
-  if (!joined)
-    return (
-      <main className="entry">
-        <div className="entry-copy">
-          <span className="eyebrow">PLANNING POKER</span>
-          <h1>
-            Faça a estimativa
-            <br />
-            <em>ganhar vida.</em>
-          </h1>
-          <p>Uma mesa colaborativa para times que pensam melhor juntos.</p>
-        </div>
-        <form className="join-panel" onSubmit={join}>
-          <div className="brand-mark">♠</div>
-          <h2>Entrar na mesa</h2>
-          <label>
-            Nome
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Código da sala
-            <input
-              value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
-              required
-            />
-          </label>
-          <div className="avatar-pick">
-            <span>Escolha seu avatar</span>
-            <div>
-              {AVATARS.map((item) => (
-                <button
-                  type="button"
-                  className={avatar === item ? "active" : ""}
-                  onClick={() => setAvatar(item)}
-                  key={item}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
-          <button className="primary" type="submit">
-            Entrar na sala <span>↗</span>
-          </button>
         </form>
       </main>
     );
@@ -493,7 +468,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
           <span>♠</span> planning poker
         </div>
         <div className="session-title">
-          <small>SESSÃO AO VIVO</small>
+          <small>SESSAO AO VIVO</small>
           <strong>{state?.name ?? "Sprint 24 - Time A"}</strong>
         </div>
         <div className="phase-pill">
@@ -516,6 +491,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
           <div className="user-avatar">{avatar}</div>
         </div>
       </header>
+
       <div className="workspace">
         <aside className="sidebar left">
           <div className="side-heading">
@@ -533,7 +509,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
                   <b>{person.name}</b>
                   <small>
                     {person.role}
-                    {person.id === socket.id ? " · Você" : ""}
+                    {person.id === socket.id ? " · Voce" : ""}
                   </small>
                 </span>
                 <i className={person.connected ? "online" : ""} />
@@ -545,9 +521,9 @@ export function App({ mode }: { mode: "home" | "room" }) {
             <p>
               <b>Fibonacci</b>
               <br />
-              Voto anônimo até revelar
+              Voto anonimo ate revelar
               <br />
-              Reflexão: 2 minutos
+              Reflexao: 2 minutos
             </p>
           </div>
           <button
@@ -556,21 +532,22 @@ export function App({ mode }: { mode: "home" | "room" }) {
               fetch(`${API}/rooms/${roomId}/report`, { method: "POST" })
             }
           >
-            ▣ Gerar relatório
+            ▣ Gerar relatorio
           </button>
         </aside>
+
         <section className="table-area">
           <div className="story-header">
             <div>
-              <small>HISTÓRIA ATUAL</small>
-              <h2>{current?.title ?? "Aguardando próxima história"}</h2>
+              <small>HISTORIA ATUAL</small>
+              <h2>{current?.title ?? "Aguardando proxima historia"}</h2>
               <p>
                 {current?.description ??
-                  "O PO pode iniciar uma história para começar a rodada."}
+                  "O PO pode iniciar uma historia para comecar a rodada."}
               </p>
             </div>
             <div className="timer">
-              <small>TEMPO DE REFLEXÃO</small>
+              <small>TEMPO DE REFLEXAO</small>
               <strong>
                 {state?.remainingSeconds
                   ? `${Math.floor(state.remainingSeconds / 60)}:${String(state.remainingSeconds % 60).padStart(2, "0")}`
@@ -578,10 +555,11 @@ export function App({ mode }: { mode: "home" | "room" }) {
               </strong>
             </div>
           </div>
+
           <div className="felt">
             <div className="felt-ring" />
             <div className="table-label">
-              <span>RODADA DE VOTAÇÃO</span>
+              <span>RODADA DE VOTACAO</span>
               <strong>
                 {state?.phase === "revelada"
                   ? "Cartas reveladas"
@@ -634,9 +612,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
               />
             </div>
           </div>
+
           <div className="hand">
             <div className="hand-title">
-              <span>Sua mão</span>
+              <span>Sua mao</span>
               <small>
                 {selected === null
                   ? "Selecione uma carta"
@@ -652,12 +631,13 @@ export function App({ mode }: { mode: "home" | "room" }) {
                   onClick={() => setSelected(value)}
                   key={String(value)}
                 >
-                  {value === "café" ? "☕" : value}
+                  {value === "cafe" ? "☕" : value}
                 </motion.button>
               ))}
             </div>
           </div>
         </section>
+
         <aside className="sidebar chat">
           <div className="chat-heading">
             <h3>Chat da mesa</h3>
