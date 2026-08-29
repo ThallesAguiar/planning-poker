@@ -6,6 +6,17 @@ import { RoomController } from './room.controller.js';
 import { RoomGateway } from './room.gateway.js';
 import { RoomService } from './room.service.js';
 import { PrismaService } from './prisma.service.js';
+import { AuthorizationService } from './auth/authorization.service.js';
+import { SessionService } from './auth/session.service.js';
+import { TimerService } from './realtime/timer.service.js';
+import { ReportController } from './reports/report.controller.js';
+import { ReportService } from './reports/report.service.js';
+import { AchievementsService } from './reports/achievements.service.js';
+import { PdfExportService } from './reports/pdf-export.service.js';
+import { LlmClient } from './ai/llm.client.js';
+import { AiParticipantService } from './ai/ai-participant.service.js';
+import { RoomStateService } from './realtime/room-state.service.js';
+import { CorrelationLogger } from './realtime/logger.service.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -19,7 +30,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       serviceId: 'api',
     }),
   ],
-  controllers: [AppController, RoomController],
-  providers: [AppService, PrismaService, RoomService, RoomGateway],
+  controllers: [AppController, RoomController, ReportController],
+  providers: [AppService, PrismaService, RoomService, RoomGateway, AuthorizationService, SessionService, TimerService, ReportService, AchievementsService, PdfExportService, LlmClient, AiParticipantService, RoomStateService, CorrelationLogger],
 })
 export class AppModule {}

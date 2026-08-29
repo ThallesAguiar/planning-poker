@@ -1,10 +1,14 @@
-import { randomUUID } from 'node:crypto';
 import { ConnectedSocket, MessageBody, SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { PrismaService } from './prisma.service.js';
 import { Server, Socket } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { Redis } from 'ioredis';
 import bcrypt from 'bcrypt';
+import { AuthorizationService } from './auth/authorization.service.js';
+import { SessionService } from './auth/session.service.js';
+import { TimerService } from './realtime/timer.service.js';
+import { AiParticipantService } from './ai/ai-participant.service.js';
+import { RoomStateService } from './realtime/room-state.service.js';
 
 type VoteValue = number | 'cafe' | '?';
 type Role = 'PO' | 'Dev' | 'QA' | 'ScrumMaster' | 'Observador' | 'IA_Agente';
@@ -23,7 +27,7 @@ export class RoomGateway {
   private readonly states = new Map<string, State>();
   private readonly clientRooms = new Map<string, string>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly authorization: AuthorizationService, private readonly sessions: SessionService, private readonly timers: TimerService, private readonly ai: AiParticipantService, private readonly roomStates: RoomStateService) {}
 
   async afterInit(server: Server) {
     const url = process.env.REDIS_URL;
@@ -36,18 +40,40 @@ export class RoomGateway {
   }
 
   @SubscribeMessage('room:join')
-  async join(@ConnectedSocket() client: Client, @MessageBody() payload: { roomId: string; name: string; avatar: string; role?: Role; sessionId?: string; password?: string }) {
+  async join(@ConnectedSocket() client: Client, @MessageBody() payload: { roomId: string; name: string; avatar: string; role?: Role; sessionId?: string; password?: string; token?: string }) {
     const roomKey = payload.roomId.trim();
     const state = await this.loadState(roomKey);
     if (state.visibility === 'PRIVATE') {
       if (!payload.password) { client.emit('room:error', { message: 'PASSWORD_REQUIRED' }); return; }
       if (!state.passwordHash || !(await bcrypt.compare(payload.password, state.passwordHash))) { client.emit('room:error', { message: 'INVALID_PASSWORD' }); return; }
     }
-    const userId = payload.sessionId?.trim() || client.id;
+    let userId = payload.sessionId?.trim() || client.id;
+    if (payload.token) {
+      try {
+        const session = this.sessions.verify(payload.token);
+        if (session.roomId && session.roomId !== roomKey && session.roomId !== state.dbRoomId) {
+          client.emit('room:error', { message: 'FORBIDDEN' });
+          return;
+        }
+        userId = session.sessionId;
+      } catch {
+        client.emit('room:error', { message: 'FORBIDDEN' });
+        return;
+      }
+    }
     client.data.userId = userId;
     const user = await this.prisma.user.upsert({ where: { id: userId }, update: { name: payload.name, avatarUrl: payload.avatar }, create: { id: userId, name: payload.name, avatarUrl: payload.avatar, isGuest: true } });
     let participant = await this.prisma.roomParticipant.findUnique({ where: { roomId_userId: { roomId: state.dbRoomId, userId: user.id } } });
-    const role = participant?.role ?? (state.participants.length === 0 ? 'PO' : (payload.role ?? 'Dev'));
+    if (!participant && state.participants.filter((item) => item.connected).length >= state.config.maxParticipantes) {
+      client.emit('room:error', { message: 'ROOM_FULL' });
+      return;
+    }
+    const requestedRole = payload.role ?? 'Dev';
+    const role = participant?.role ?? (state.participants.length === 0 ? 'PO' : requestedRole);
+    if (!participant && role !== 'PO' && !state.config.papeisPermitidos.includes(role)) {
+      client.emit('room:error', { message: 'FORBIDDEN' });
+      return;
+    }
     if (!participant) participant = await this.prisma.roomParticipant.create({ data: { roomId: state.dbRoomId, userId: user.id, role, isAI: false } });
     client.data.participantId = participant.id;
     state.participants = state.participants.filter((item) => item.userId !== user.id);
@@ -62,6 +88,10 @@ export class RoomGateway {
   @SubscribeMessage('room:configure')
   async configure(@ConnectedSocket() client: Client, @MessageBody() payload: { config: Partial<Config> }) {
     const state = this.authorized(client, 'PO'); if (!state || state.phase !== 'lobby') return;
+    if (payload.config.maxParticipantes !== undefined && (!Number.isInteger(payload.config.maxParticipantes) || payload.config.maxParticipantes < 1)) return;
+    if (payload.config.tempoReflexaoSegundos !== undefined && (!Number.isInteger(payload.config.tempoReflexaoSegundos) || payload.config.tempoReflexaoSegundos < 1)) return;
+    if (payload.config.tempoDiscussaoSegundos !== undefined && (!Number.isInteger(payload.config.tempoDiscussaoSegundos) || payload.config.tempoDiscussaoSegundos < 1)) return;
+    if (payload.config.deckValues !== undefined && (!Array.isArray(payload.config.deckValues) || payload.config.deckValues.length === 0)) return;
     state.config = { ...state.config, ...payload.config };
     await this.prisma.roomConfig.update({ where: { roomId: state.dbRoomId }, data: { ...payload.config, deckValues: payload.config.deckValues as any, papeisPermitidos: payload.config.papeisPermitidos as any } as any });
     this.broadcast(state.roomId);
@@ -85,7 +115,7 @@ export class RoomGateway {
   @SubscribeMessage('vote:cast')
   async vote(@ConnectedSocket() client: Client, @MessageBody() payload: { storyId: string; value: VoteValue }) {
     const state = this.stateFor(client); const participant = state?.participants.find((item) => item.id === this.participantId(client));
-    if (!state || !participant || participant.role === 'Observador' || state.phase !== 'votacao' || state.currentStoryId !== payload.storyId || !state.roundId || !state.config.deckValues.includes(payload.value)) return;
+    if (!state || !participant || !this.authorization.canVote(participant.role, state.phase) || state.currentStoryId !== payload.storyId || !state.roundId || !state.config.deckValues.includes(payload.value)) return;
     await this.prisma.vote.upsert({ where: { voteRoundId_participantId: { voteRoundId: state.roundId, participantId: participant.id } }, update: { value: String(payload.value), castAt: new Date() }, create: { voteRoundId: state.roundId, participantId: participant.id, value: String(payload.value) } });
     state.votes = [...state.votes.filter((item) => item.participantId !== participant.id), { participantId: participant.id, participantName: participant.name, value: payload.value }]; participant.hasVoted = true;
     this.server.to(state.roomId).emit('vote:progress', { voted: state.votes.length, total: this.votingParticipants(state).length }); this.broadcast(state.roomId);
@@ -93,6 +123,20 @@ export class RoomGateway {
   }
 
   @SubscribeMessage('vote:forceReveal') async reveal(@ConnectedSocket() client: Client) { const state = this.authorized(client, 'PO'); if (state) await this.revealState(state); }
+
+  @SubscribeMessage('ai:requestVote')
+  async requestAiVote(@ConnectedSocket() client: Client) {
+    const state = this.authorized(client, 'PO');
+    if (!state || state.phase !== 'votacao' || !state.currentStoryId || !state.roundId) return;
+    try {
+      const result = await this.ai.castVote(state.dbRoomId, state.currentStoryId, state.roundId);
+      let participant = state.participants.find((item) => item.id === result.participantId);
+      if (!participant) { participant = { id: result.participantId, userId: result.participantId, name: result.participantName, avatar: '🤖', role: 'IA_Agente', isAI: true, connected: true, hasVoted: false }; state.participants.push(participant); }
+      state.votes = [...state.votes.filter((vote) => vote.participantId !== result.participantId), { participantId: result.participantId, participantName: result.participantName, value: result.value as VoteValue }]; participant.hasVoted = true;
+      await this.prisma.chatMessage.create({ data: { roomId: state.dbRoomId, storyId: state.currentStoryId, participantId: result.participantId, text: result.justification, type: 'justificativa' } });
+      this.server.to(state.roomId).emit('ai:status', { status: 'voted' }); this.broadcast(state.roomId);
+    } catch (error) { const message = error instanceof Error ? error.message : 'AI_UNAVAILABLE'; const status = message === 'AI_UNAVAILABLE' ? 'unavailable' : 'error'; this.server.to(state.roomId).emit('ai:status', { status, message }); }
+  }
 
   @SubscribeMessage('vote:revote') async revote(@ConnectedSocket() client: Client) {
     const state = this.authorized(client, 'PO'); if (!state || !state.currentStoryId) return; await this.present(client, { storyId: state.currentStoryId });
@@ -124,18 +168,20 @@ export class RoomGateway {
     if (values.length > 1 && new Set(values).size > 1) { state.phase = 'discussao'; if (state.currentStoryId) await this.prisma.story.update({ where: { id: state.currentStoryId }, data: { status: 'em_discussao' } }); this.startTimer(state, 'discussao', state.config.tempoDiscussaoSegundos); this.server.to(state.roomId).emit('discussion:start', { remainingSeconds: state.config.tempoDiscussaoSegundos }); this.broadcast(state.roomId); }
   }
 
-  private startTimer(state: State, type: 'reflexao' | 'discussao', seconds: number) { this.stopTimer(state); state.timerType = type; state.remainingSeconds = Math.max(0, seconds); state.timer = setInterval(async () => { state.remainingSeconds = Math.max(0, (state.remainingSeconds ?? 1) - 1); this.server.to(state.roomId).emit('timer:tick', { type, remainingSeconds: state.remainingSeconds }); if (state.remainingSeconds === 0) { await this.stopTimer(state); if (type === 'reflexao') await this.revealState(state); else { state.phase = 'revelada'; this.server.to(state.roomId).emit('discussion:end'); this.broadcast(state.roomId); } } }, 1000); this.server.to(state.roomId).emit('timer:start', { type, duracaoSegundos: seconds }); }
-  private async stopTimer(state: State) { if (state.timer) clearInterval(state.timer); state.timer = undefined; state.timerType = null; state.remainingSeconds = null; }
+  private startTimer(state: State, type: 'reflexao' | 'discussao', seconds: number) { void this.stopTimer(state); state.timerType = type; const deadline = new Date(Date.now() + Math.max(0, seconds) * 1000); state.remainingSeconds = Math.max(0, seconds); if (state.roundId) void this.prisma.voteRound.update({ where: { id: state.roundId }, data: { timerType: type, timerDeadline: deadline } }); this.timers.schedule({ key: state.roomId, type, deadline }, (remainingSeconds) => { state.remainingSeconds = remainingSeconds; this.server.to(state.roomId).emit('timer:tick', { type, remainingSeconds }); }, async () => { await this.stopTimer(state); if (type === 'reflexao') await this.revealState(state); else { state.phase = 'revelada'; this.server.to(state.roomId).emit('discussion:end', { storyId: state.currentStoryId, reason: 'timeout' }); this.broadcast(state.roomId); } }); this.server.to(state.roomId).emit('timer:start', { type, duracaoSegundos: seconds, deadline: deadline.toISOString() }); }
+  private async stopTimer(state: State) { this.timers.cancel(state.roomId); state.timer = undefined; state.timerType = null; state.remainingSeconds = null; if (state.roundId) await this.prisma.voteRound.update({ where: { id: state.roundId }, data: { timerType: null, timerDeadline: null } }).catch(() => undefined); }
   private async clearRound(state: State) { await this.stopTimer(state); if (state.roundId) await this.prisma.voteRound.update({ where: { id: state.roundId }, data: { endedAt: new Date() } }).catch(() => undefined); state.roundId = undefined; }
   private votingParticipants(state: State) { return state.participants.filter((item) => item.role !== 'Observador'); }
   private participantId(client: Client) { return this.stateFor(client)?.participants.find((item) => item.userId === (client as any).data?.userId || item.id === (client as any).data?.participantId)?.id ?? ''; }
   private stateFor(client: Client) { const room = this.clientRooms.get(client.id); return room ? this.states.get(room) : undefined; }
-  private authorized(client: Client, role: 'PO') { const state = this.stateFor(client); const participant = state?.participants.find((item) => item.id === this.participantId(client)); return state && participant?.id === state.ownerId && participant.role === role ? state : undefined; }
-  private broadcast(roomId: string) { const state = this.states.get(roomId); if (!state) return; const { passwordHash: _passwordHash, ...publicState } = state; const safe = { ...publicState, timer: undefined, votes: state.phase === 'revelada' || state.phase === 'discussao' ? state.votes : state.votes.map((item) => ({ ...item, value: '?' as VoteValue })) }; this.server.to(roomId).emit('room:state', safe); }
+  private authorized(client: Client, role: 'PO') { const state = this.stateFor(client); const participant = state?.participants.find((item) => item.id === this.participantId(client)); return state && participant && this.authorization.canControlRoom(participant.id, participant.role, state.ownerId, role) ? state : undefined; }
+  private broadcast(roomId: string) { const state = this.states.get(roomId); if (!state) return; const { passwordHash: _passwordHash, ...publicState } = state; const safe = { ...publicState, timer: undefined, votes: state.phase === 'revelada' || state.phase === 'discussao' ? state.votes : state.votes.map((item) => ({ ...item, value: '?' as VoteValue })) }; void this.roomStates.save(roomId, { ...state, timer: undefined }); this.server.to(roomId).emit('room:state', safe); }
   private removeClient(client: Client) { const roomId = this.clientRooms.get(client.id); if (!roomId) return; const state = this.states.get(roomId); if (state) { const participant = state.participants.find((item) => item.id === this.participantId(client)); if (participant) participant.connected = false; this.broadcast(roomId); } this.clientRooms.delete(client.id); }
 
   private async loadState(roomKey: string): Promise<State> {
     const cached = this.states.get(roomKey); if (cached) return cached;
+    const restored = await this.roomStates.restore(roomKey);
+    if (restored?.dbRoomId && restored?.config && restored?.participants && restored?.stories) { this.states.set(roomKey, restored as unknown as State); return restored as unknown as State; }
     const include = { config: true, stories: { orderBy: { order: 'asc' as const } }, participants: { include: { user: true } }, messages: { orderBy: { createdAt: 'asc' as const } } };
     const existing = await this.prisma.room.findFirst({ where: { OR: [{ id: roomKey }, { inviteCode: roomKey.toUpperCase() }] }, include });
     let roomId = existing?.id;

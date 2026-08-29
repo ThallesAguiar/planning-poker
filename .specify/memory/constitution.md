@@ -1,5 +1,7 @@
 <!--
 Sync Impact Report
+- Version change: 1.0.0 -> 1.1.0
+- Modified constraints: Anthropic-specific AI integration -> configurable provider-neutral LLM integration
 - Version change: unversioned template -> 1.0.0
 - Modified principles: template placeholders -> all five project principles below
 - Added sections: Technology and Product Constraints; Delivery and Quality Gates
@@ -62,8 +64,8 @@ product's required fun and visual quality.
 The v1 system MUST use React with Vite, TypeScript, Socket.IO client, Zustand or Redux Toolkit,
 Framer Motion, and TailwindCSS for the frontend; NestJS, TypeScript, REST, and a Socket.IO gateway
 for the backend; PostgreSQL with Prisma or TypeORM for persistence; Redis integration for realtime
-scaling; JWT for lightweight authentication; and an isolated Anthropic integration for the AI
-participant. The API MUST run in a multi-stage Docker image. Development Compose MUST provide API,
+scaling; JWT for lightweight authentication; and an isolated configurable LLM integration for the AI
+participant, using an OpenAI-compatible endpoint or a provider-specific adapter when required. The API MUST run in a multi-stage Docker image. Development Compose MUST provide API,
 PostgreSQL, and Redis services, healthchecks, healthy dependencies, environment-based secrets, and
 automatic development migrations.
 
@@ -96,4 +98,4 @@ clarifications or non-semantic wording changes. Compliance MUST be reviewed at f
 implementation completion, and release review. Reviewers MUST reject unsupported completion claims,
 missing persistence or authorization checks, and unverified realtime behavior.
 
-**Version**: 1.0.0 | **Ratified**: TODO(RATIFICATION_DATE): original adoption date unknown | **Last Amended**: 2026-08-28
+**Version**: 1.1.0 | **Ratified**: TODO(RATIFICATION_DATE): original adoption date unknown | **Last Amended**: 2026-08-28

@@ -18,12 +18,15 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Variaveis basicas via ambiente: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` e `PORT`.
 - [x] README com comandos de execucao, portas e estrutura.
 - [x] Constituicao do projeto definida em `.specify/memory/constitution.md` e templates Spec Kit sincronizados.
+- [x] Especificacao inicial do produto criada em `specs/001-collaborative-planning-poker/spec.md`.
+
 
 ### Pendente
 
-- [ ] Containerizar frontend para ambiente de desenvolvimento, se necessario.
-- [ ] Adicionar `ANTHROPIC_API_KEY` ao compose e ao fluxo da API.
-- [ ] Trocar `prisma db push` por migrations versionadas em producao.
+- [x] Containerizar frontend para ambiente de desenvolvimento via `frontend/Dockerfile`, nginx SPA fallback e serviço Compose na porta 5173.
+- [x] Adicionar configuracao LLM provider-neutral ao compose e ao fluxo da API (`LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `LLM_TIMEOUT_MS`).
+- [x] Trocar `prisma db push` por migrations versionadas em producao; entrypoint usa `npm run db:migrate:deploy`.
+- [~] Correlation ID HTTP e logger com redacao de segredos adicionados; correlação completa de eventos realtime ainda pendente.
 - [ ] Configurar segredos reais fora de valores default de desenvolvimento.
 
 ## 2. Shared types e contrato Socket.IO
@@ -60,7 +63,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Persistir entrada e saida de participantes.
 - [x] Persistir cada rodada e cada voto.
 - [x] Persistir mensagens realtime de chat.
-- [ ] Persistir estado atual da rodada e seus timers.
+- [~] Persistir estado atual da rodada e seus timers; deadlines agora sao salvos em `VoteRound`, mas a recuperacao distribuida/atomicidade ainda esta pendente.
 - [x] Gerar migration Prisma versionada `0001_realtime_baseline`.
 - [ ] Criar seed com 4 participantes e 1 IA.
 - [ ] Implementar consultas de historico e relatorios anteriores.
@@ -87,8 +90,8 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [ ] Autenticacao leve com JWT.
 - [~] Guardas e autorizacao por papel, principalmente PO.
 - [ ] Endpoint para login, reconexao e sessao de convidado.
-- [ ] Endpoint para listar relatorios e sessoes passadas.
-- [ ] Exportacao de relatorio em CSV e PDF.
+- [~] Endpoint para listar relatorios e sessoes passadas com sessao JWT; rota de visualizacao implementada, validacao E2E ainda pendente.
+- [~] Exportacao de relatorio em CSV e PDF; rotas e botoes frontend implementados, testes de download/compatibilidade ainda pendentes.
 
 ## 5. Gateway e realtime
 
@@ -110,12 +113,13 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 ### Pendente
 
 - [~] Remover estado operacional da memoria e usar Redis/PostgreSQL como fonte de restauracao.
+- [~] Servico `RoomStateService` salva snapshots ativos em Redis com fallback de memoria e gateway restaura snapshot; merge completo com PostgreSQL ainda pendente.
 - [x] Persistir e restaurar participantes, historias, votos e chat via PostgreSQL.
 - [x] Integrar Redis adapter para multiplas instancias.
 - [~] Implementar `room:participantUpdate` dedicado; snapshot ja atualiza participantes.
 - [x] Implementar `room:configure`.
 - [x] Implementar `story:present`.
-- [x] Implementar timers de reflexao e discussao no servidor.
+- [~] Implementar timers de reflexao e discussao no servidor com deadline persistido e servico dedicado; recuperacao distribuida/atomicidade ainda pendente.
 - [x] Emitir `timer:start`, `timer:tick` e `discussion:start`.
 - [x] Emitir `discussion:end` ao fim do timer.
 - [x] Habilitar revelacao por todos os votos, timeout ou comando autorizado.
@@ -144,12 +148,18 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Rotas `/` e `/room/:code` com captura de codigo.
 - [x] Formulario de senha para salas privadas antes do Socket.IO.
 - [x] Build e lint passando.
+- [x] Estilos da entrada e mesa reorganizados: botoes com estados, checkbox acessivel, campos alinhados e responsividade base.
+- [x] Campos de senha com toggle visual para mostrar ou ocultar o valor.
+- [x] Tela inicial ajustada para layout visual com apresentacao, cartas em leque, painel compacto e dica inferior.
+- [x] Tela da sala redesenhada no padrao mesa oval escura do mockup, com topo compacto, fase/timer e chat lateral.
+- [x] Telas frontend de minhas salas, perfil e configuracoes adicionadas com navegacao lateral.
+- [x] Navegacao de entrada normaliza codigo, rota ou URL de sala antes de abrir `/room/:code`.
 
 ### Pendente
 
 - [x] Home completa para criar ou entrar em sala.
 - [x] Home separada por rota com criacao de sala publica ou privada.
-- [ ] Tela de configuracao da sala para PO.
+- [~] Tela de configuracao visual disponivel em `/settings`; integracao completa com permissoes PO e persistencia ainda pendente.
 - [ ] Selecao real de papel e avatar no ingresso.
 - [ ] Controle visual de permissoes por papel.
 - [~] Renderizar historia atual por `story:present`.
@@ -170,18 +180,19 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 
 ### Feito
 
-- [ ] Nenhuma integracao IA implementada.
+- [x] Adapter LLM provider-neutral isolado com timeout, prompt limitado e resposta estruturada; suporta OpenRouter, OpenAI e endpoints OpenAI-compatible.
+- [x] Participante IA cria identidade, vota, registra justificativa, expõe status realtime e possui controles frontend.
 
 ### Pendente
 
-- [ ] Criar modulo/servico isolado para Anthropic.
-- [ ] Configurar chave, modelo, timeout e limites via ambiente.
-- [ ] Criar participante IA por sala.
-- [ ] Montar prompt com historia, papel e chat da rodada.
-- [ ] Validar voto contra deck permitido.
-- [ ] Emitir voto e justificativa como participante normal.
-- [ ] Tratar timeout, erro, custo e indisponibilidade do provedor.
-- [ ] Adicionar toggle na configuracao da sala.
+- [x] Criar modulo/servico LLM isolado em `api/src/ai/llm.client.ts`.
+- [x] Configurar chave, base URL, modelo, timeout e limites via ambiente.
+- [x] Criar participante IA por sala.
+- [x] Montar prompt com historia, papel e contexto recente de chat.
+- [x] Validar voto contra deck permitido.
+- [x] Emitir voto e justificativa como participante normal.
+- [~] Tratar timeout, erro e indisponibilidade do provedor; limite de custo por rodada implementado via `LLM_MAX_REQUESTS_PER_ROUND`, com status de erro e fallback manual visíveis.
+- [x] Adicionar toggle na configuracao da sala e acao para solicitar voto IA.
 
 ## 8. Relatorio da sprint
 
@@ -193,14 +204,14 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 
 ### Pendente
 
-- [ ] Compilar historias, valor final, criterio e rodadas.
+- [~] Compilar historias, valor final, criterio e rodadas.
 - [ ] Calcular tempo de reflexao e discussao por historia.
 - [ ] Registrar divergencia inicial e final.
 - [ ] Associar chat e justificativas por historia.
-- [ ] Consolidar participacao e comentarios.
-- [ ] Calcular badges/achievements.
-- [ ] Gerar pagina web permanente.
-- [ ] Exportar PDF e CSV.
+- [x] Consolidar participacao e comentarios.
+- [x] Calcular badges/achievements basicos a partir de historias e participacao em `api/src/reports/achievements.service.ts`.
+- [~] Gerar pagina web permanente via rota `/report/:id` com historias, participacao e achievements; refinamentos visuais ainda pendentes.
+- [~] Exportar CSV e PDF; ambas rotas implementadas, testes de download/compatibilidade ainda pendentes.
 - [ ] Emitir `report:ready` para todos na sala.
 
 ## 9. Qualidade e verificacao
@@ -209,6 +220,12 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 
 - [x] Frontend: `npm run build`.
 - [x] Frontend: `npm run lint`.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos a revisao visual de `frontend/src/index.css`.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos correcao do seletor visual entre entrar e criar sala.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos adicionar toggle visual de senha.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos ajustar a tela inicial ao mockup enviado.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos redesenhar sala e adicionar telas de minhas salas, perfil e configuracoes.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos corrigir normalizacao do caminho de entrada em sala.
 - [x] API: `npx prisma validate`.
 - [x] API: `npm run build`.
 - [x] API: `npm test`.
@@ -219,6 +236,61 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Smoke test completo: dois clientes, chat, apresentacao, votos, revelacao e discussao.
 - [x] Smoke test de sala privada: hash oculto, senha invalida rejeitada e senha correta aceita.
 - [x] Validacao da constituicao: sem placeholders de template, versao 1.0.0 consistente e datas ISO.
+- [x] Checklist de qualidade da especificacao concluido em `specs/001-collaborative-planning-poker/checklists/requirements.md`.
+- [x] Plano e artefatos de design gerados em `specs/001-collaborative-planning-poker/`.
+- [x] Plano regenerado com clarificacao de acesso a relatorios refletida em `specs/001-collaborative-planning-poker/plan.md`.
+- [x] Tasks regeneradas com regra de acesso e exportacao de relatorios refletida em `specs/001-collaborative-planning-poker/tasks.md`.
+- [x] Ignore de Docker e exemplo de ambiente da API adicionados em `.dockerignore` e `api/.env.example`.
+- [x] Configuracao opcional de LLM adicionada ao `docker-compose.yml` sem hardcode de credencial.
+- [~] Shared types agora incluem criterio de consenso e codigos de erro; contratos completos ainda pendentes.
+- [x] Implementacao inicial validada: frontend build/lint, Prisma validate, API build/test e Docker Compose config.
+- [~] DTOs class-validator adicionados para criacao de salas e historias; autenticacao e CRUD completo ainda pendentes.
+- [x] API recompilada e testes unitarios executados apos adicao dos DTOs; Prisma e Docker validados novamente.
+- [x] API recompilada, Prisma Client regenerado, testes, validacao Prisma e Docker executados apos persistencia/configuracao.
+- [~] Gateway agora rejeita sala cheia, papel não permitido e configuração inválida; política centralizada ainda pendente.
+- [x] API build/test, frontend build e Docker Compose config executados após validações do gateway.
+- [~] Serviços de autorização e sessão JWT adicionados e conectados ao gateway; membership completo e testes ainda pendentes.
+- [~] Gateway agora valida token JWT de sala no ingresso; emissão via endpoint e reconexão completa ainda pendentes.
+- [~] Endpoint `POST /rooms/:id/join` emite sessão guest/JWT e cria participante com validação de acesso, papel e lotação.
+- [x] Correção de consistência: token emitido no ingresso mantém mesmo `sessionId` usado no usuário participante.
+- [x] Erro de inferência UUID corrigido no serviço de sessão.
+- [x] API build/testes e frontend build/lint aprovados após integração JWT.
+- [x] Testes unitários adicionados para autorização e sessão guest/JWT em `api/src/auth/*.spec.ts`.
+- [~] Contratos shared ampliados para relatório, erros, timers e discussão; alinhamento total com gateway ainda pendente.
+- [x] API e frontend build/lint, API tests (5) executados após atualização dos contratos shared.
+- [x] Ingresso frontend integrado ao endpoint guest/JWT com sessão persistida por sala.
+- [x] Primeiro participante via endpoint recebe papel PO automaticamente.
+- [x] API build/testes e frontend build/lint aprovados após integração do ingresso frontend.
+- [x] Falha de tipagem no payload JWT corrigida e build/testes de API aprovados.
+- [x] API build/testes executados após criação do endpoint de ingresso guest/JWT.
+- [~] Persistencia de deadline de rodada, export PDF e validacao de ambiente adicionadas; transicoes ainda nao usam todos campos.
+- [x] Tasks executaveis geradas em `specs/001-collaborative-planning-poker/tasks.md`.
+- [x] Validacao dos artefatos do plano: secoes obrigatorias, contratos, modelo, quickstart e referencia em `AGENTS.md`.
+- [x] Validacao da lista de tasks: IDs sequenciais, fases, labels de historias, caminhos e dependencias.
+- [x] Clarificacao de acesso a relatorios integrada na especificacao em `specs/001-collaborative-planning-poker/spec.md`.
+- [x] API build/testes, Prisma validate, Docker Compose config e frontend build/lint executados apos integracao do timer por deadline.
+- [x] Relatorio: testes unitarios de agregacao, autorizacao de sessao e CSV adicionados; API test/build/lint aprovados.
+- [x] IA: adapter LLM provider-neutral com prompt limitado, resposta estruturada, timeout e mapeamento de erros; testes unitarios aprovados.
+- [x] LLM configuravel validado: `LLM_BASE_URL` e `LLM_MODEL` permitem OpenRouter, OpenAI ou qualquer endpoint OpenAI-compatible; Docker Compose config, API build/lint e 12 testes aprovados.
+- [x] Plano Spec Kit revalidado com arquitetura LLM provider-neutral, fases, limites e gates alinhados a `prompt.md`.
+- [x] Constituicao atualizada para LLM configuravel/provider-neutral; versao 1.1.0 e plano sincronizados.
+- [x] IA agora envia contexto recente de chat e limita solicitações por rodada via `LLM_MAX_REQUESTS_PER_ROUND`; testes de falha adicionados.
+- [x] Gateway e frontend distinguem IA indisponivel de falha operacional e orientam continuidade manual sem voto fabricado.
+- [x] API test (14), API build/lint e frontend build/lint executados apos ajuste de fallback IA.
+- [x] Frontend IA: toggle de configuracao, acao de voto e status de indisponibilidade adicionados; frontend build/lint aprovados.
+- [x] API: 6 arquivos de teste e 11 testes passando apos integracao do adapter IA.
+- [x] API: 7 arquivos de teste e 12 testes passando apos integracao do participante IA e dispatch realtime.
+- [x] Estado realtime: `RoomStateService` integrado ao gateway com snapshot Redis/memoria; 15 testes API, build/lint aprovados.
+- [x] Estado realtime: Prisma validate e Docker Compose config aprovados apos integracao do snapshot service.
+- [x] API: 10 arquivos de teste e 16 testes passando apos migration entrypoint e correlation logger.
+- [x] Frontend container: Docker Compose config, frontend build e lint aprovados apos adicao do nginx SPA container.
+- [x] Frontend relatorio: rota `/report/:id`, visualizacao de historias e download CSV autenticado; build/lint aprovados.
+- [x] Relatorios: badges basicos adicionados e integrados na agregacao; 11 arquivos de teste, 17 testes API e build/lint aprovados.
+- [x] Relatorios: renderer PDF e rota `/reports/:id/export.pdf` adicionados; API test/build/lint aprovados.
+- [x] API: 12 arquivos de teste e 18 testes passando apos integracao de PDF e achievements.
+- [x] Frontend: download autenticado de PDF e exibicao de achievements adicionados; build/lint aprovados.
+- [~] Teste unitario de exportacao PDF adicionado; teste de download HTTP e compatibilidade de arquivo ainda pendentes.
+- [~] Relatorio agora calcula divergencia numerica inicial/final quando ha votos; tempos detalhados e validacao E2E ainda pendentes.
 
 ### Pendente
 
@@ -228,14 +300,15 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [ ] Testes com Redis adapter e multiplas instancias.
 - [ ] Testes E2E frontend em dois navegadores.
 - [ ] Testes de exportacao PDF/CSV.
-- [ ] Testes de timeout e falha da IA.
+- [~] Testes unitarios de timeout, saida invalida, chave ausente e limite de custo adicionados; testes de integracao/fallback humano pendentes.
+- [x] Testes unitarios de deadline, substituicao e cancelamento do timer em `api/src/realtime/timer.service.spec.ts`.
 
 ## Ordem recomendada
 
-1. Persistencia e modelo de rodada.
-2. Gateway completo com autorizacao e timers no servidor.
+1. Completar Phase 2: `room-state.service.ts`, atomicidade de timer e testes fundacionais.
+2. Gateway completo com contratos shared e transicoes isoladas em `round.service.ts`.
 3. Redis adapter e reconexao persistente.
 4. Fluxos REST de autenticacao, convite e historico.
 5. Frontend completo alinhado aos eventos reais.
-6. Integracao IA.
-7. Relatorios, exportacoes e testes E2E.
+6. Limites de custo, fallback humano e testes de falha IA.
+7. Completar relatorios (metricas/DTO/permissoes), testes de exportacao e E2E.

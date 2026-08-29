@@ -103,6 +103,8 @@ model VoteRound {
   number Int
   startedAt DateTime @default(now())
   endedAt DateTime?
+  timerType String?
+  timerDeadline DateTime?
   story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
   votes Vote[]
 }
@@ -135,5 +137,6 @@ model SprintReport {
   generatedAt DateTime @default(now())
   summary Json
   urlExportCsv String?
+  urlExportPdf String?
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }
