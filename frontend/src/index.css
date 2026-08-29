@@ -34,6 +34,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid #d7f36a; outline-
 .home-entry .join-panel label { color: #111a15; font-size: 14px; }
 .home-entry .join-panel input:not([type="checkbox"]) { min-height: 50px; border-color: #d1d3cb; border-radius: 12px; box-shadow: inset 0 1px 2px #202a2210; font-size: 15px; font-weight: 700; }
 .home-entry .join-panel .primary { min-height: 54px; margin-top: 22px; justify-content: space-between; gap: 18px; border-radius: 12px; font-size: 16px; box-shadow: 0 5px 0 #97aa3f; }
+.restoring-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 50% 12%, #19372a 0, transparent 34%), #07110d; color: #f5f0e8; }
+.restoring-card { width: min(100%, 420px); display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 38px 32px; border: 1px solid #ffffff1a; border-radius: 16px; background: #0b1511f2; text-align: center; box-shadow: 0 24px 70px #0007; }
+.restoring-card h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; color: #f8f1df; }
+.restoring-spinner { width: 34px; height: 34px; border: 3px solid #223628; border-top-color: #d7f36a; border-radius: 50%; animation: restoring-spin .8s linear infinite; }
+.restoring-card .room-loading-copy { color: #aab5a8; }
+@keyframes restoring-spin { to { transform: rotate(360deg); } }
 .home-tip { display: grid; grid-template-columns: 24px 1fr; align-items: center; gap: 10px; margin: 22px 0 0; padding: 14px 16px; border: 1px solid #ded8cc; border-radius: 12px; background: #eee9df99; color: #5b625c; font-size: 12px; line-height: 1.35; }
 .home-tip span { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: #d7f36a; color: #6b7f22; font-size: 12px; font-weight: 900; }
 .brand-mark { background: #d7f36a; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; font-size: 24px; color: #121a14; }

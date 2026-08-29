@@ -155,11 +155,15 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Tela inicial raiz voltou a exibir o leque de cartas e foi reduzida para caber sem scroll vertical em viewport desktop comum.
 - [x] Tela inicial recebeu regras responsivas por altura (`max-height`) para evitar scroll em desktops com viewport mais baixa.
 - [x] Entrada em sala privada nao faz fallback local quando `POST /rooms/:id/join` falha com `404`; usuario fica fora da mesa com erro visivel.
+- [x] `docker-compose.yml` agora usa `JWT_SECRET` de desenvolvimento valido por default, evitando queda da API containerizada ao subir em 29/08/2026 sem segredo externo definido.
+- [x] Fluxo de ambiente para clone alinhado com `.env.example` na raiz para Docker Compose e `.env.example` por camada para execucao local fora do Docker.
 - [x] Tela da sala redesenhada no padrao mesa oval escura do mockup, com topo compacto, fase/timer e chat lateral.
 - [x] Telas frontend de minhas salas, perfil e configuracoes adicionadas com navegacao lateral.
 - [x] Navegacao de entrada normaliza codigo, rota ou URL de sala antes de abrir `/room/:code`.
 - [x] Entrada pela home autentica e abre direto mesa de poker, inclusive em sala privada com senha.
 - [x] Rota direta `/room/:code` reaproveita a mesma tela inicial de entrada, sem segunda tela duplicada.
+- [x] Recarregar `/room/:code` com sessao salva reconecta direto para mesa sem piscar tela de entrada.
+- [x] Loading de reconexao deixou de usar o visual da tela de entrada: novo `restoring-shell`/`restoring-card`/spinner em tema escuro da mesa; `restoringRoom` so renderiza loading enquanto nao entrou na mesa (`joined`), evitando travamento ao levar sessao da home para `/room/:code`.
 
 ### Pendente
 
@@ -238,6 +242,11 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos restaurar o leque de cartas e reduzir a altura visual da home.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos compactar a home para viewports desktop de menor altura.
 - [x] API: `npm run build` e `npm test`; Frontend: `npm run build`, `npm run lint` e `npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` executados apos bloquear fallback local em senha errada ou sala ausente.
+- [x] Docker: `docker compose up --build -d api` voltou a subir API com `JWT_SECRET` default de desenvolvimento; Frontend: Playwright ganhou cobertura para sala inexistente.
+- [x] Frontend: `npm run build`, `npm run lint` e `npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` executados apos bloquear flash da tela de entrada no reload da rota da sala.
+- [x] Frontend: `npm run build`, `npm run lint` e 6 testes e2e (room-entry.spec.ts, incluindo reload sem flash) aprovados apos redesenhar o loading de reconexao fora do visual de entrada e corrigir guard `restoringRoom && !joined`; e2e inicial revelou travamento na tela de reconexao ao levar sessao da home para a rota da sala, resolvido pelo novo guard.
+- [x] Docker: `docker compose config --quiet` revalidado apos alinhar `.env.example` da raiz, compose e exemplos por camada.
+- [x] `.env.example` da raiz e `api/.env.example` documentados com seus cenarios (Docker vs execucao local) e README atualizado orientando a manter os dois sincronizados; `docker compose config --quiet` revalidado.
 - [x] API: `npx prisma validate`.
 - [x] API: `npm run build`.
 - [x] API: `npm test`.

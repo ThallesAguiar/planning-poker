@@ -89,3 +89,49 @@ test("does not enter private room with wrong password", async ({
     page.getByRole("button", { name: /Revelar cartas|Revelar votos/ }),
   ).toHaveCount(0);
 });
+
+test("does not enter room when code does not exist", async ({ page }) => {
+  await page.goto(appUrl);
+  await page.locator("input").nth(0).fill("Jogador Inexistente");
+  await page.locator("input").nth(1).fill(`ZZ${Date.now().toString().slice(-4)}`);
+  await page.getByRole("button", { name: /^Entrar na sala/ }).click();
+
+  await expect(page).toHaveURL(appUrl);
+  await expect(page.getByRole("alert")).toContainText("Sala nao encontrada.");
+  await expect(
+    page.getByRole("button", { name: /Revelar cartas|Revelar votos/ }),
+  ).toHaveCount(0);
+});
+
+test("reload on room route restores session without flashing entry screen", async ({
+  page,
+  request,
+}) => {
+  const roomName = `Sala reload ${Date.now()}`;
+  const response = await request.post(`${apiUrl}/rooms`, {
+    data: { name: roomName, visibility: "PRIVATE", password: "1234" },
+  });
+  expect(response.ok()).toBeTruthy();
+  const room = await response.json();
+
+  await page.goto(appUrl);
+  await page.locator("input").nth(0).fill("Jogador Reload");
+  await page.locator("input").nth(1).fill(room.code);
+  await page.locator("input").nth(2).fill("1234");
+  await page.getByRole("button", { name: /^Entrar na sala/ }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/room/${room.code}$`));
+  await expect(
+    page.getByRole("button", { name: /Revelar cartas|Revelar votos/ }),
+  ).toBeVisible();
+
+  await page.reload();
+
+  await expect(
+    page.getByRole("button", { name: /Revelar cartas|Revelar votos/ }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Entrar na mesa" })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Entrar na sala privada" }),
+  ).toHaveCount(0);
+});

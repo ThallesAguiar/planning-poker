@@ -13,6 +13,26 @@ Aplicação de Planning Poker colaborativo em tempo real.
 - Docker Desktop
 - Node.js 22+
 
+## Configurar ambiente
+
+Para clone novo:
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item api/.env.example api/.env
+Copy-Item frontend/.env.example frontend/.env
+```
+
+Uso recomendado:
+
+- `.env` na raiz: variaveis usadas pelo `docker compose` (`DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `PORT`, LLM e `VITE_API_URL`). Hosts apontam para a rede interna do Docker (`postgres:5432`, `redis:6379`).
+- `api/.env`: rodar a API fora do Docker. Hosts apontam para as portas expostas dos containers no host (`localhost:5432`, `redis://localhost:6380`).
+- `frontend/.env`: rodar frontend fora do Docker (`VITE_API_URL`).
+
+Os dois exemplos da API existem de proposito: compartilham as mesmas variaveis (`JWT_SECRET`, `PORT`, `LLM_*`), mas diferem no endereco de `DATABASE_URL` e `REDIS_URL` conforme o cenario. Mantenha os dois sincronizados ao adicionar variaveis novas.
+
+Arquivos `.env` nao entram na imagem Docker porque `.dockerignore` ignora `.env*`.
+
 ## Executar com Docker
 
 Na raiz do projeto:
@@ -26,6 +46,7 @@ Serviços:
 - API: `http://localhost:3000`
 - PostgreSQL: `localhost:5432`
 - Redis: `localhost:6380`
+- Frontend containerizado: `http://localhost:5173`
 - Container da API: `planning-pocker`
 
 Prisma aplica migrations versionadas automaticamente durante a subida da API.

@@ -52,6 +52,13 @@ export function App({ mode }: { mode: "home" | "room" }) {
   const [message, setMessage] = useState("");
   const [selected, setSelected] = useState<number | string | null>(null);
   const [joined, setJoined] = useState(false);
+  const [restoringRoom, setRestoringRoom] = useState(() => {
+    if (mode !== "room" || !routeCode) return false;
+    return Boolean(
+      localStorage.getItem(`planning-poker-token:${routeCode}`) ||
+        sessionStorage.getItem(`planning-poker-pending-join:${routeCode}`),
+    );
+  });
   const [aiStatus, setAiStatus] = useState<
     "idle" | "voted" | "unavailable" | "error"
   >("idle");
@@ -73,6 +80,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
             : "Senha invalida ou sala indisponivel.",
       );
       setJoined(false);
+      setRestoringRoom(false);
       socket.disconnect();
     };
     socket.on("room:error", error);
@@ -97,6 +105,12 @@ export function App({ mode }: { mode: "home" | "room" }) {
     if (mode !== "room" || !routeCode) return;
     setRoomId(routeCode);
     setHomeMode("join");
+    setRestoringRoom(
+      Boolean(
+        localStorage.getItem(`planning-poker-token:${routeCode}`) ||
+          sessionStorage.getItem(`planning-poker-pending-join:${routeCode}`),
+      ),
+    );
     fetch(`${API}/rooms/${encodeURIComponent(routeCode)}`)
       .then((response) => (response.ok ? response.json() : null))
       .then((room) => setRoomIsPrivate(room?.visibility === "PRIVATE"))
@@ -157,9 +171,11 @@ export function App({ mode }: { mode: "home" | "room" }) {
 
       if (response.status === 404) {
         setJoinError("Sala nao encontrada.");
+        setRestoringRoom(false);
         return false;
       } else if (!response.ok) {
         setJoinError("Senha invalida ou sala indisponivel.");
+        setRestoringRoom(false);
         return false;
       } else {
         const session = await response.json();
@@ -193,6 +209,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
     }
 
     setJoined(true);
+    setRestoringRoom(false);
     return true;
   };
 
@@ -211,7 +228,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
     const pending = sessionStorage.getItem(
       `planning-poker-pending-join:${routeCode}`,
     );
-    if (!token && !pending) return;
+    if (!token && !pending) {
+      setRestoringRoom(false);
+      return;
+    }
     const password = pending ? JSON.parse(pending).password : roomPassword;
     sessionStorage.removeItem(`planning-poker-pending-join:${routeCode}`);
     void connectRoom(routeCode, password);
@@ -280,7 +300,21 @@ export function App({ mode }: { mode: "home" | "room" }) {
     socket.emit("ai:requestVote");
   };
 
-  const isRoomEntry = mode === "room" && !joined;
+  const isRoomEntry = mode === "room" && !joined && !restoringRoom;
+
+  if (mode === "room" && restoringRoom && !joined)
+    return (
+      <main className="restoring-shell">
+        <div className="restoring-card" aria-live="polite">
+          <div className="brand-mark">♠</div>
+          <h2>Reconectando sala...</h2>
+          <span className="restoring-spinner" aria-hidden="true" />
+          <p className="room-loading-copy">
+            Restaurando sua sessao e abrindo mesa.
+          </p>
+        </div>
+      </main>
+    );
 
   if (mode === "home" || isRoomEntry)
     return (
