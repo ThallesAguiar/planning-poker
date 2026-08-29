@@ -49,11 +49,8 @@ export class RoomGateway {
       client.emit('room:error', { message: 'ROOM_NOT_FOUND' });
       return;
     }
-    if (state.visibility === 'PRIVATE') {
-      if (!payload.password) { client.emit('room:error', { message: 'PASSWORD_REQUIRED' }); return; }
-      if (!state.passwordHash || !(await bcrypt.compare(payload.password, state.passwordHash))) { client.emit('room:error', { message: 'INVALID_PASSWORD' }); return; }
-    }
     let userId = payload.sessionId?.trim() || client.id;
+    let hasValidSession = false;
     if (payload.token) {
       try {
         const session = this.sessions.verify(payload.token);
@@ -62,10 +59,15 @@ export class RoomGateway {
           return;
         }
         userId = session.sessionId;
+        hasValidSession = true;
       } catch {
         client.emit('room:error', { message: 'FORBIDDEN' });
         return;
       }
+    }
+    if (state.visibility === 'PRIVATE' && !hasValidSession) {
+      if (!payload.password) { client.emit('room:error', { message: 'PASSWORD_REQUIRED' }); return; }
+      if (!state.passwordHash || !(await bcrypt.compare(payload.password, state.passwordHash))) { client.emit('room:error', { message: 'INVALID_PASSWORD' }); return; }
     }
     client.data.userId = userId;
     const user = await this.prisma.user.upsert({ where: { id: userId }, update: { name: payload.name, avatarUrl: payload.avatar }, create: { id: userId, name: payload.name, avatarUrl: payload.avatar, isGuest: true } });

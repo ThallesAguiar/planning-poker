@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { socket } from "./lib/socket";
@@ -26,11 +26,19 @@ function normalizeRoomCode(value: string) {
   }
 }
 
+function isSameRoom(stateCode: string | undefined, stateRoomId: string | undefined, target: string) {
+  const expected = target.toLowerCase();
+  return (
+    stateCode?.toLowerCase() === expected ||
+    stateRoomId?.toLowerCase() === expected
+  );
+}
+
 export function App({ mode }: { mode: "home" | "room" }) {
   const navigate = useNavigate();
   const { code } = useParams<{ code: string }>();
   const routeCode = mode === "room" ? decodeURIComponent(code ?? "") : "";
-  const { state, setState } = useAppStore();
+  const { state, setState, clearState } = useAppStore();
   const [roomId, setRoomId] = useState(routeCode || "planning-demo");
   const [name, setName] = useState(
     () =>
@@ -52,6 +60,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
   const [message, setMessage] = useState("");
   const [selected, setSelected] = useState<number | string | null>(null);
   const [joined, setJoined] = useState(false);
+  const restoreAttemptedFor = useRef("");
+  const pendingConnectHandler = useRef<(() => void) | null>(null);
   const [restoringRoom, setRestoringRoom] = useState(() => {
     if (mode !== "room" || !routeCode) return false;
     return Boolean(
@@ -64,7 +74,21 @@ export function App({ mode }: { mode: "home" | "room" }) {
   >("idle");
 
   useEffect(() => {
-    const update = (next: any) => setState(next);
+    const update = (next: any) => {
+      if (
+        mode === "room" &&
+        routeCode &&
+        !isSameRoom(next?.code, next?.roomId, routeCode)
+      ) {
+        return;
+      }
+      setState(next);
+      setJoined(true);
+      setRestoringRoom(false);
+      if (next?.code) {
+        sessionStorage.removeItem(`planning-poker-pending-join:${next.code}`);
+      }
+    };
     const tick = (next: { remainingSeconds: number }) => {
       const current = useAppStore.getState().state;
       if (current)
@@ -79,6 +103,12 @@ export function App({ mode }: { mode: "home" | "room" }) {
             ? "Sala nao encontrada."
             : "Senha invalida ou sala indisponivel.",
       );
+      if (routeCode) {
+        localStorage.removeItem(`planning-poker-token:${routeCode}`);
+        localStorage.removeItem(`planning-poker-session:${routeCode}`);
+        sessionStorage.removeItem(`planning-poker-pending-join:${routeCode}`);
+        sessionStorage.removeItem(`planning-poker-password:${routeCode}`);
+      }
       setJoined(false);
       setRestoringRoom(false);
       socket.disconnect();
@@ -97,14 +127,21 @@ export function App({ mode }: { mode: "home" | "room" }) {
       socket.off("room:error", error);
       socket.off("timer:tick", tick);
       socket.off("ai:status", ai);
-      socket.disconnect();
     };
-  }, [setState]);
+  }, [clearState, mode, routeCode, setState]);
 
   useEffect(() => {
     if (mode !== "room" || !routeCode) return;
     setRoomId(routeCode);
     setHomeMode("join");
+    const currentState = useAppStore.getState().state;
+    if (currentState && isSameRoom(currentState.code, currentState.roomId, routeCode)) {
+      setJoined(true);
+      setRestoringRoom(false);
+      return;
+    }
+    clearState();
+    setJoined(false);
     setRestoringRoom(
       Boolean(
         localStorage.getItem(`planning-poker-token:${routeCode}`) ||
@@ -115,7 +152,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
       .then((response) => (response.ok ? response.json() : null))
       .then((room) => setRoomIsPrivate(room?.visibility === "PRIVATE"))
       .catch(() => setRoomIsPrivate(false));
-  }, [mode, routeCode]);
+  }, [clearState, mode, routeCode]);
 
   const current =
     state?.stories.find((story) => story.id === state.currentStoryId) ??
@@ -147,6 +184,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
   const connectRoom = async (target: string, password = roomPassword) => {
     setJoinError("");
     if (!target) return false;
+    setJoined(false);
+    setRestoringRoom(true);
 
     sessionStorage.setItem(
       "planning-poker-player",
@@ -190,6 +229,38 @@ export function App({ mode }: { mode: "home" | "room" }) {
       `planning-poker-pending-join:${target}`,
       JSON.stringify({ password }),
     );
+    if (password) {
+      sessionStorage.setItem(`planning-poker-password:${target}`, password);
+    }
+
+    if (pendingConnectHandler.current) {
+      socket.off("connect", pendingConnectHandler.current);
+      pendingConnectHandler.current = null;
+    }
+
+    const confirmation = new Promise<"confirmed" | "socket-error" | "timeout">((resolve) => {
+      let finished = false;
+      const cleanup = () => {
+        finished = true;
+        window.clearTimeout(timer);
+        socket.off("room:state", confirm);
+        socket.off("room:error", failBySocketError);
+      };
+      const confirm = (next: any) => {
+        if (!isSameRoom(next?.code, next?.roomId, target)) return;
+        cleanup();
+        resolve("confirmed");
+      };
+      const fail = (reason: "socket-error" | "timeout") => {
+        if (finished) return;
+        cleanup();
+        resolve(reason);
+      };
+      const failBySocketError = () => fail("socket-error");
+      const timer = window.setTimeout(() => fail("timeout"), 6000);
+      socket.on("room:state", confirm);
+      socket.once("room:error", failBySocketError);
+    });
 
     const emitJoin = () =>
       socket.emit("room:join", {
@@ -205,12 +276,24 @@ export function App({ mode }: { mode: "home" | "room" }) {
     if (socket.connected) emitJoin();
     else {
       socket.once("connect", emitJoin);
+      pendingConnectHandler.current = emitJoin;
       socket.connect();
     }
 
-    setJoined(true);
-    setRestoringRoom(false);
-    return true;
+    const confirmationResult = await confirmation;
+    const confirmed = confirmationResult === "confirmed";
+    if (pendingConnectHandler.current === emitJoin) {
+      socket.off("connect", emitJoin);
+      pendingConnectHandler.current = null;
+    }
+    if (!confirmed) {
+      setRestoringRoom(false);
+      setJoined(false);
+      if (confirmationResult === "timeout") {
+        setJoinError("Nao foi possivel entrar na sala.");
+      }
+    }
+    return confirmed;
   };
 
   const join = async (event: FormEvent) => {
@@ -224,6 +307,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
 
   useEffect(() => {
     if (mode !== "room" || !routeCode || joined) return;
+    if (restoreAttemptedFor.current === routeCode) return;
+    restoreAttemptedFor.current = routeCode;
     const token = localStorage.getItem(`planning-poker-token:${routeCode}`);
     const pending = sessionStorage.getItem(
       `planning-poker-pending-join:${routeCode}`,
@@ -232,7 +317,9 @@ export function App({ mode }: { mode: "home" | "room" }) {
       setRestoringRoom(false);
       return;
     }
-    const password = pending ? JSON.parse(pending).password : roomPassword;
+    const password = pending
+      ? JSON.parse(pending).password
+      : sessionStorage.getItem(`planning-poker-password:${routeCode}`) ?? roomPassword;
     sessionStorage.removeItem(`planning-poker-pending-join:${routeCode}`);
     void connectRoom(routeCode, password);
   }, [joined, mode, routeCode, roomPassword]);
@@ -300,9 +387,13 @@ export function App({ mode }: { mode: "home" | "room" }) {
     socket.emit("ai:requestVote");
   };
 
-  const isRoomEntry = mode === "room" && !joined && !restoringRoom;
+  const hasConfirmedRoom =
+    mode === "room" &&
+    joined &&
+    Boolean(state && isSameRoom(state.code, state.roomId, routeCode));
+  const isRoomEntry = mode === "room" && !hasConfirmedRoom && !restoringRoom;
 
-  if (mode === "room" && restoringRoom && !joined)
+  if (mode === "room" && restoringRoom && !hasConfirmedRoom)
     return (
       <main className="restoring-shell">
         <div className="restoring-card" aria-live="polite">

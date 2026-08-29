@@ -90,6 +90,44 @@ test("does not enter private room with wrong password", async ({
   ).toHaveCount(0);
 });
 
+test("direct room entry with wrong password never flashes poker table", async ({
+  page,
+  request,
+}) => {
+  const roomName = `Sala direta senha invalida ${Date.now()}`;
+  const response = await request.post(`${apiUrl}/rooms`, {
+    data: { name: roomName, visibility: "PRIVATE", password: "1234" },
+  });
+  expect(response.ok()).toBeTruthy();
+  const room = await response.json();
+
+  await page.goto(`${appUrl}/room/${room.code}`);
+  await page.getByLabel("Nome").fill("Jogador Direto Erro");
+  await page.getByLabel("Senha da sala").fill("9999");
+  await page.evaluate(() => {
+    (window as any).__sawPokerTable = Boolean(document.querySelector(".app-shell"));
+    const observer = new MutationObserver(() => {
+      if (document.querySelector(".app-shell")) {
+        (window as any).__sawPokerTable = true;
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    (window as any).__pokerTableObserver = observer;
+  });
+
+  await page.getByRole("button", { name: /^Entrar na sala/ }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Senha invalida ou sala indisponivel.",
+  );
+  await page.waitForTimeout(500);
+
+  const sawPokerTable = await page.evaluate(() => {
+    (window as any).__pokerTableObserver?.disconnect();
+    return (window as any).__sawPokerTable;
+  });
+  expect(sawPokerTable).toBe(false);
+});
+
 test("does not enter room when code does not exist", async ({ page }) => {
   await page.goto(appUrl);
   await page.locator("input").nth(0).fill("Jogador Inexistente");
@@ -134,4 +172,37 @@ test("reload on room route restores session without flashing entry screen", asyn
   await expect(
     page.getByRole("heading", { name: "Entrar na sala privada" }),
   ).toHaveCount(0);
+});
+
+test("room connection stays on websocket without polling flood", async ({
+  page,
+  request,
+}) => {
+  const pollingRequests: string[] = [];
+  page.on("request", (req) => {
+    if (req.url().includes("/socket.io/") && req.url().includes("transport=polling")) {
+      pollingRequests.push(req.url());
+    }
+  });
+
+  const roomName = `Sala websocket ${Date.now()}`;
+  const response = await request.post(`${apiUrl}/rooms`, {
+    data: { name: roomName, visibility: "PRIVATE", password: "1234" },
+  });
+  expect(response.ok()).toBeTruthy();
+  const room = await response.json();
+
+  await page.goto(appUrl);
+  await page.locator("input").nth(0).fill("Jogador Socket");
+  await page.locator("input").nth(1).fill(room.code);
+  await page.locator("input").nth(2).fill("1234");
+  await page.getByRole("button", { name: /^Entrar na sala/ }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/room/${room.code}$`));
+  await expect(
+    page.getByRole("button", { name: /Revelar cartas|Revelar votos/ }),
+  ).toBeVisible();
+
+  await page.waitForTimeout(1500);
+  expect(pollingRequests).toHaveLength(0);
 });

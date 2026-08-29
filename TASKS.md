@@ -163,7 +163,13 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Entrada pela home autentica e abre direto mesa de poker, inclusive em sala privada com senha.
 - [x] Rota direta `/room/:code` reaproveita a mesma tela inicial de entrada, sem segunda tela duplicada.
 - [x] Recarregar `/room/:code` com sessao salva reconecta direto para mesa sem piscar tela de entrada.
+- [x] Cliente Socket.IO da mesa passou a usar `websocket` direto, evitando enxurrada de requests `transport=polling` observada em 29/08/2026.
+- [x] Restauração de sessão inválida não entra em loop: token/sessão antigos são removidos após `room:error`, e cada rota recebe no máximo uma tentativa automática.
+- [x] Socket.IO limita tentativas automáticas de reconexão para evitar flood quando backend ou sessão está indisponível.
+- [x] Reconexão de sala privada com token válido não exige senha novamente; senha fica apenas na `sessionStorage` enquanto necessária ao fluxo de entrada.
 - [x] Loading de reconexao deixou de usar o visual da tela de entrada: novo `restoring-shell`/`restoring-card`/spinner em tema escuro da mesa; `restoringRoom` so renderiza loading enquanto nao entrou na mesa (`joined`), evitando travamento ao levar sessao da home para `/room/:code`.
+
+- [x] Fluxo entrada/mesa separado: mesa so renderiza apos `room:state` confirmado da sala atual, sem flash ao errar senha, usar sala inexistente ou receber token invalido.
 
 ### Pendente
 
@@ -244,7 +250,11 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] API: `npm run build` e `npm test`; Frontend: `npm run build`, `npm run lint` e `npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` executados apos bloquear fallback local em senha errada ou sala ausente.
 - [x] Docker: `docker compose up --build -d api` voltou a subir API com `JWT_SECRET` default de desenvolvimento; Frontend: Playwright ganhou cobertura para sala inexistente.
 - [x] Frontend: `npm run build`, `npm run lint` e `npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` executados apos bloquear flash da tela de entrada no reload da rota da sala.
+- [x] Frontend: `npm run build`, `npm run lint` e `npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` executados apos travar Socket.IO em websocket e cobrir ausencia de polling no browser.
+- [x] Frontend: correção do loop de restauração com sessão inválida e limite de reconexão; build, lint e testes E2E de entrada executados.
+- [x] Backend: API rebuildada após permitir reconexão autenticada de sala privada; frontend: build, lint e 7 testes E2E em `http://localhost:5173` aprovados.
 - [x] Frontend: `npm run build`, `npm run lint` e 6 testes e2e (room-entry.spec.ts, incluindo reload sem flash) aprovados apos redesenhar o loading de reconexao fora do visual de entrada e corrigir guard `restoringRoom && !joined`; e2e inicial revelou travamento na tela de reconexao ao levar sessao da home para a rota da sala, resolvido pelo novo guard.
+- [x] Frontend: `npm run build`, `npm run lint` e `FRONTEND_URL=http://localhost:5173 npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` com 8 testes aprovados apos separar estados de entrada/loading/mesa, exigir `room:state` antes de renderizar mesa e remover disconnect indevido na troca de rota.
 - [x] Docker: `docker compose config --quiet` revalidado apos alinhar `.env.example` da raiz, compose e exemplos por camada.
 - [x] `.env.example` da raiz e `api/.env.example` documentados com seus cenarios (Docker vs execucao local) e README atualizado orientando a manter os dois sincronizados; `docker compose config --quiet` revalidado.
 - [x] API: `npx prisma validate`.
