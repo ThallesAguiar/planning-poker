@@ -22,5 +22,5 @@ Antes de concluir, leia `TASKS.md`, confirme que os itens refletem o estado real
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/001-collaborative-planning-poker/plan.md`.
+at `specs/002-user-auth-rooms/plan.md`.
 <!-- SPECKIT END -->
