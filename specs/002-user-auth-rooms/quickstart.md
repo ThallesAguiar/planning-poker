@@ -2,7 +2,7 @@
 
 ## Goal
 
-Validate account registration, login, room history, duplicate-free rejoin, private room access, and host-approved room profile changes without altering approved visual style.
+Validate account registration, login, room history, duplicate-free rejoin, private room access, direct room name/avatar updates, and host-approved role changes without altering approved visual style.
 
 ## Prerequisites
 
@@ -24,11 +24,13 @@ Validate account registration, login, room history, duplicate-free rejoin, priva
 10. Confirm participant list contains only one entry for the account.
 11. Open same room in another tab with same account.
 12. Confirm participant list still contains one account identity.
-13. From non-host participant, request room profile change.
-14. From host, approve request.
-15. Confirm every connected client sees updated participant profile within 2 seconds.
-16. Repeat profile request and reject it.
-17. Confirm participant profile stays unchanged.
+13. From non-host participant, change room name or avatar directly.
+14. Confirm every connected client sees updated participant identity within 2 seconds.
+15. From same participant, request room role change.
+16. From host, approve request.
+17. Confirm every connected client sees updated participant role within 2 seconds.
+18. Repeat role request and reject it.
+19. Confirm participant role stays unchanged.
 
 ## Automated Gates
 
@@ -55,6 +57,7 @@ Add or extend E2E coverage for:
 - same account rejoin does not duplicate participant;
 - wrong password for non-member does not enter room;
 - existing private-room member rejoin does not ask password;
-- profile request approval updates table;
-- profile request rejection keeps previous profile;
+- direct room name/avatar update broadcasts to table;
+- room role request approval updates table;
+- room role request rejection keeps previous role;
 - entry/table visual shell remains current style.

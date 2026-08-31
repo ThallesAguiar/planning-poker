@@ -1,4 +1,4 @@
-# Realtime Contract: Profile Requests
+# Realtime Contract: Room Profile And Role Updates
 
 Namespace: `/room`
 
@@ -6,24 +6,38 @@ All events require valid room session and existing membership. Server remains so
 
 ## Client to Server
 
-### room:profileRequest
+### room:profileUpdate
 
-Participant requests room-specific profile change.
+Participant updates room-specific display fields directly.
 
 ```json
 {
   "name": "Ana QA",
-  "avatar": "🐼",
-  "role": "QA"
+  "avatar": "🐼"
 }
 ```
 
 **Rules**:
 
 - At least one field must be present.
+- Caller may update only own room display fields.
+- Update applies immediately and emits fresh `room:state`.
+
+### room:roleChangeRequest
+
+Participant requests room-specific role change.
+
+```json
+{
+  "role": "QA"
+}
+```
+
+**Rules**:
+
 - Requested role must be allowed in room configuration.
 - Request starts as `pending`.
-- Request does not change current participant until host approves.
+- Request does not change current participant role until host approves.
 
 ### room:profileDecision
 
@@ -54,15 +68,14 @@ Host approves or rejects request.
 
 ### room:profileRequestPending
 
-Sent to host when participant submits request.
+Sent to host when participant submits role change request.
 
 ```json
 {
   "id": "request-id",
   "requesterParticipantId": "participant-id",
   "requesterName": "Ana",
-  "requestedName": "Ana QA",
-  "requestedAvatar": "🐼",
+  "currentRole": "Dev",
   "requestedRole": "QA",
   "createdAt": "2026-08-31T12:00:00.000Z"
 }
@@ -92,7 +105,13 @@ Existing error channel may return:
 
 ```json
 {
-  "message": "INVALID_PROFILE_REQUEST"
+  "message": "INVALID_PROFILE_UPDATE"
+}
+```
+
+```json
+{
+  "message": "INVALID_ROLE_REQUEST"
 }
 ```
 
@@ -104,4 +123,4 @@ Existing error channel may return:
 
 ## Snapshot Impact
 
-`room:state.participants[]` must reflect approved room-specific display name, avatar, and role. Pending or rejected requests must not change visible participant state.
+`room:state.participants[]` must reflect immediate room display name/avatar updates and approved role changes. Pending or rejected role requests must not change visible role state.

@@ -28,7 +28,8 @@ Create registered account and return account session.
     "name": "Ana",
     "avatar": "🦊"
   },
-  "token": "account-session-token"
+  "token": "account-session-token",
+  "expiresAt": "2026-08-31T23:59:59.000Z"
 }
 ```
 
@@ -60,7 +61,8 @@ Authenticate registered account.
     "name": "Ana",
     "avatar": "🦊"
   },
-  "token": "account-session-token"
+  "token": "account-session-token",
+  "expiresAt": "2026-08-31T23:59:59.000Z"
 }
 ```
 
@@ -68,6 +70,20 @@ Authenticate registered account.
 
 - `401 INVALID_CREDENTIALS`
 - `400 INVALID_INPUT`
+
+## POST /auth/logout
+
+Invalidate current account session and disconnect active browser room session association.
+
+**Authorization**: account session required.
+
+**Success 204**:
+
+No body.
+
+**Errors**:
+
+- `401 UNAUTHENTICATED`
 
 ## GET /auth/me
 
@@ -189,9 +205,47 @@ Open existing room membership without room password.
 - `403 NOT_ROOM_MEMBER`
 - `404 ROOM_NOT_FOUND`
 
+## PATCH /rooms/:id/members/me
+
+Update caller room-specific display fields directly without changing account profile.
+
+**Authorization**: room session or account-backed room session required.
+
+**Request**:
+
+```json
+{
+  "name": "Ana QA",
+  "avatar": "🦊"
+}
+```
+
+**Success 200**:
+
+```json
+{
+  "participantId": "participant-id",
+  "name": "Ana QA",
+  "avatar": "🦊",
+  "updatedAt": "2026-08-31T12:15:00.000Z"
+}
+```
+
+**Rules**:
+
+- Caller may update only their own room display name/avatar.
+- At least one of `name` or `avatar` is required.
+- Update must not change global account profile.
+
+**Errors**:
+
+- `401 UNAUTHENTICATED`
+- `403 FORBIDDEN`
+- `400 INVALID_INPUT`
+
 ## GET /rooms/:id/profile-requests
 
-Return pending room profile change requests visible to host.
+Return pending room role change requests visible to host.
 
 **Authorization**: room/account session for host required.
 
@@ -202,8 +256,7 @@ Return pending room profile change requests visible to host.
   {
     "id": "request-id",
     "requesterParticipantId": "participant-id",
-    "requestedName": "Ana QA",
-    "requestedAvatar": "🐼",
+    "currentRole": "Dev",
     "requestedRole": "QA",
     "status": "pending",
     "createdAt": "2026-08-31T12:00:00.000Z"

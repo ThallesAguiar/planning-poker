@@ -19,7 +19,7 @@ Persistent account used for login, room history, ownership, and membership reuse
 
 - Email must be unique and valid.
 - Password hash must never be exposed.
-- Password must satisfy minimum strength selected during implementation.
+- Password must be at least 8 characters.
 
 ## Guest User
 
@@ -68,18 +68,17 @@ Durable relationship between user identity and room. This is duplicate-preventio
 - Different users may share display name.
 - Non-member private-room join requires correct password.
 
-## Room Profile Change Request
+## Room Role Change Request
 
-Participant request to change room-specific display identity or role.
+Participant request to change room-specific role. Room display name and avatar update directly on membership.
 
 **Fields**:
 
 - `id`: request identity.
 - `roomId`: target room.
 - `requesterParticipantId`: participant asking for change.
-- `requestedName`: optional room display name.
-- `requestedAvatarUrl`: optional room avatar.
-- `requestedRole`: optional room role.
+- `currentRole`: role at request creation time.
+- `requestedRole`: target room role.
 - `status`: pending, approved, rejected, cancelled.
 - `decidedByParticipantId`: host participant who decided.
 - `createdAt`: request time.
@@ -88,11 +87,28 @@ Participant request to change room-specific display identity or role.
 **Validation**:
 
 - Only active room participants may request changes.
-- At least one changed field is required.
+- Requested role is required.
 - Only current host may approve or reject.
 - Role changes must use allowed room roles.
 - Approved request updates membership and broadcasts room state.
 - Rejected request changes no visible participant data.
+
+## Direct Room Profile Update
+
+Immediate update to caller membership display fields inside one room.
+
+**Fields**:
+
+- `participantId`: membership being updated.
+- `roomDisplayName`: optional room-specific name.
+- `roomAvatarUrl`: optional room-specific avatar.
+- `updatedAt`: update time.
+
+**Validation**:
+
+- Only active participant may update their own room display fields directly.
+- At least one of room display name or avatar is required.
+- Update must not modify global account profile.
 
 ## Account Session
 
@@ -121,7 +137,7 @@ member_disconnected -> member_active
 member_active -> member_removed
 ```
 
-### Room Profile Change Request
+### Room Role Change Request
 
 ```text
 pending -> approved

@@ -38,14 +38,14 @@
 - Always require room password: rejected because it breaks saved-room UX.
 - Store private room passwords long term in browser: rejected because it increases credential exposure.
 
-## Decision: Room profile changes require host approval
+## Decision: Only room role changes require host approval
 
-**Rationale**: Name, avatar, and role affect room trust and permissions. Host approval prevents role escalation and confusing identity changes during estimation.
+**Rationale**: Clarification resolved that room display name and avatar can change directly by the participant, while role changes remain approval-gated because they alter permissions.
 
 **Alternatives considered**:
 
-- Self-service name/avatar change: rejected because user explicitly required host permission.
-- Host approval only for role change: rejected because display identity changes still affect room trust and history.
+- Host approval for all room profile changes: rejected because it adds friction to simple name/avatar edits and contradicts clarification.
+- Fully self-service role changes: rejected because it allows privilege escalation.
 
 ## Decision: Preserve visual style by reusing existing surfaces
 
