@@ -1,15 +1,54 @@
-import { expect, test } from "@playwright/test";
+﻿import { expect, test } from "@playwright/test";
 
 const appUrl = process.env.FRONTEND_URL ?? "http://localhost:5174";
 const apiUrl = process.env.VITE_API_URL ?? "http://localhost:3000";
 
+test("home shows one card at a time and switches between account and room", async ({
+  page,
+}) => {
+  await page.goto(appUrl);
+
+  await expect(page.getByRole("tab", { name: "Sua conta" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".account-card")).toHaveCount(1);
+  await expect(page.locator("form.join-panel")).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "Mesa" }).click();
+  await expect(page.getByRole("tab", { name: "Mesa" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("form.join-panel")).toHaveCount(1);
+  await expect(page.locator(".account-card")).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "Sua conta" }).click();
+  await expect(page.locator(".account-card")).toHaveCount(1);
+  await expect(page.locator("form.join-panel")).toHaveCount(0);
+});
+
+test("register shows name and avatar fields and creates account", async ({ page }) => {
+  const email = `e2e-${Date.now()}@test.com`;
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Cadastro" }).click();
+
+  await expect(page.getByLabel("Nome")).toBeVisible();
+  await expect(page.getByText("Seu avatar")).toBeVisible();
+
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Nome").fill("Jogador E2E");
+  await page.getByLabel("Senha da conta").fill("senha123");
+  await page.getByRole("button", { name: "♠" }).click();
+  await page.getByRole("button", { name: "Criar conta" }).click();
+
+  await expect(page.getByRole("tab", { name: "Mesa" })).toBeVisible();
+  await expect(page.getByText(email)).toBeVisible();
+});
+
 test("creates private room and opens poker table directly", async ({ page }) => {
   await page.goto(appUrl);
 
+  await page.getByRole("tab", { name: "Mesa" }).click();
   await page.getByRole("button", { name: "Criar sala" }).click();
   await page.getByLabel("Nome da sala").fill(`Sprint Playwright ${Date.now()}`);
   await page.getByLabel("Sala privada").check();
-  await page.getByRole("textbox", { name: /Senha/ }).fill("1234");
+  await page.getByLabel("Senha da sala").fill("1234");
   await page.locator('button[type="submit"]').click();
 
   await expect(page).toHaveURL(/\/room\/[^/]+$/);
@@ -29,9 +68,10 @@ test("joins private room from home with code and password directly", async ({
   const room = await response.json();
 
   await page.goto(appUrl);
-  await page.locator("input").nth(0).fill("Jogador Playwright");
-  await page.locator("input").nth(1).fill(room.code);
-  await page.locator("input").nth(2).fill("1234");
+  await page.getByRole("tab", { name: "Mesa" }).click();
+  await page.getByLabel("Nome", { exact: true }).fill("Jogador Playwright");
+  await page.getByLabel("Codigo da sala").fill(room.code);
+  await page.getByLabel("Senha da sala").fill("1234");
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();
 
   await expect(page).toHaveURL(new RegExp(`/room/${room.code}$`));
@@ -76,9 +116,10 @@ test("does not enter private room with wrong password", async ({
   const room = await response.json();
 
   await page.goto(appUrl);
-  await page.locator("input").nth(0).fill("Jogador Erro");
-  await page.locator("input").nth(1).fill(room.code);
-  await page.locator("input").nth(2).fill("9999");
+  await page.getByRole("tab", { name: "Mesa" }).click();
+  await page.getByLabel("Nome", { exact: true }).fill("Jogador Erro");
+  await page.getByLabel("Codigo da sala").fill(room.code);
+  await page.getByLabel("Senha da sala").fill("9999");
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();
 
   await expect(page).toHaveURL(appUrl);
@@ -130,8 +171,9 @@ test("direct room entry with wrong password never flashes poker table", async ({
 
 test("does not enter room when code does not exist", async ({ page }) => {
   await page.goto(appUrl);
-  await page.locator("input").nth(0).fill("Jogador Inexistente");
-  await page.locator("input").nth(1).fill(`ZZ${Date.now().toString().slice(-4)}`);
+  await page.getByRole("tab", { name: "Mesa" }).click();
+  await page.getByLabel("Nome", { exact: true }).fill("Jogador Inexistente");
+  await page.getByLabel("Codigo da sala").fill(`ZZ${Date.now().toString().slice(-4)}`);
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();
 
   await expect(page).toHaveURL(appUrl);
@@ -153,9 +195,10 @@ test("reload on room route restores session without flashing entry screen", asyn
   const room = await response.json();
 
   await page.goto(appUrl);
-  await page.locator("input").nth(0).fill("Jogador Reload");
-  await page.locator("input").nth(1).fill(room.code);
-  await page.locator("input").nth(2).fill("1234");
+  await page.getByRole("tab", { name: "Mesa" }).click();
+  await page.getByLabel("Nome", { exact: true }).fill("Jogador Reload");
+  await page.getByLabel("Codigo da sala").fill(room.code);
+  await page.getByLabel("Senha da sala").fill("1234");
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();
 
   await expect(page).toHaveURL(new RegExp(`/room/${room.code}$`));
@@ -193,9 +236,10 @@ test("room connection stays on websocket without polling flood", async ({
   const room = await response.json();
 
   await page.goto(appUrl);
-  await page.locator("input").nth(0).fill("Jogador Socket");
-  await page.locator("input").nth(1).fill(room.code);
-  await page.locator("input").nth(2).fill("1234");
+  await page.getByRole("tab", { name: "Mesa" }).click();
+  await page.getByLabel("Nome", { exact: true }).fill("Jogador Socket");
+  await page.getByLabel("Codigo da sala").fill(room.code);
+  await page.getByLabel("Senha da sala").fill("1234");
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();
 
   await expect(page).toHaveURL(new RegExp(`/room/${room.code}$`));

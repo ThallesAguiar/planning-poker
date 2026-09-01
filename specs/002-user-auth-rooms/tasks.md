@@ -18,10 +18,10 @@
 
 **Purpose**: Prepare feature scaffolding, environment notes, and visual baseline checks.
 
-- [ ] T001 Add account/session environment placeholders to `.env.example`
-- [ ] T002 [P] Add account/session environment placeholders to `api/.env.example`
-- [ ] T003 [P] Create Playwright visual shell baseline spec in `frontend/tests/visual-baseline.spec.ts`
-- [ ] T004 Record auth-room validation flow updates in `specs/002-user-auth-rooms/quickstart.md`
+- [X] T001 Add account/session environment placeholders to `.env.example`
+- [X] T002 [P] Add account/session environment placeholders to `api/.env.example`
+- [X] T003 [P] Create Playwright visual shell baseline spec in `frontend/tests/visual-baseline.spec.ts`
+- [X] T004 Record auth-room validation flow updates in `specs/002-user-auth-rooms/quickstart.md`
 
 ---
 
@@ -31,20 +31,20 @@
 
 **Critical**: No user story work begins until this phase is complete.
 
-- [ ] T005 Extend shared auth, membership, room list, and role-request types in `packages/shared-types/src/index.ts`
-- [ ] T006 Mirror shared type declarations in `packages/shared-types/src/index.d.ts`
-- [ ] T007 Extend `User` and `RoomParticipant` models for account auth and room profile fields in `api/prisma/schema.prisma`
-- [ ] T008 Add `RoomRoleChangeRequest` persistence model in `api/prisma/schema.prisma`
-- [ ] T009 Create Prisma migration for auth fields, membership profile fields, last-seen tracking, and role requests in `api/prisma/migrations/20260831000000_user_auth_rooms/migration.sql`
-- [ ] T010 [P] Add account auth DTOs in `api/src/auth/auth.dto.ts`
-- [ ] T011 [P] Extend room join, room list, room profile, and role request DTOs in `api/src/room.dto.ts`
-- [ ] T012 Add account token issue/verify helpers with 12-hour expiry in `api/src/auth/session.service.ts`
-- [ ] T013 Add account authorization helper for REST and websocket flows in `api/src/auth/authorization.service.ts`
-- [ ] T014 Create account auth service for hashing, credential validation, and safe serialization in `api/src/auth/auth.service.ts`
-- [ ] T015 Create auth controller for register, login, logout, and me endpoints in `api/src/auth/auth.controller.ts`
-- [ ] T016 Register auth providers and controller in `api/src/app.module.ts`
-- [ ] T017 [P] Add session and authorization coverage for account token expiry in `api/src/auth/session.service.spec.ts`
-- [ ] T018 [P] Add auth service coverage for password hashing and duplicate email rejection in `api/src/auth/auth.service.spec.ts`
+- [X] T005 Extend shared auth, membership, room list, and role-request types in `packages/shared-types/src/index.ts`
+- [X] T006 Mirror shared type declarations in `packages/shared-types/src/index.d.ts`
+- [X] T007 Extend `User` and `RoomParticipant` models for account auth and room profile fields in `api/prisma/schema.prisma`
+- [X] T008 Add `RoomRoleChangeRequest` persistence model in `api/prisma/schema.prisma`
+- [X] T009 Create Prisma migration for auth fields, membership profile fields, last-seen tracking, and role requests in `api/prisma/migrations/20260831000000_user_auth_rooms/migration.sql`
+- [X] T010 [P] Add account auth DTOs in `api/src/auth/auth.dto.ts`
+- [X] T011 [P] Extend room join, room list, room profile, and role request DTOs in `api/src/room.dto.ts`
+- [X] T012 Add account token issue/verify helpers with 12-hour expiry in `api/src/auth/session.service.ts`
+- [X] T013 Add account authorization helper for REST and websocket flows in `api/src/auth/authorization.service.ts`
+- [X] T014 Create account auth service for hashing, credential validation, and safe serialization in `api/src/auth/auth.service.ts`
+- [X] T015 Create auth controller for register, login, logout, and me endpoints in `api/src/auth/auth.controller.ts`
+- [X] T016 Register auth providers and controller in `api/src/app.module.ts`
+- [X] T017 [P] Add session and authorization coverage for account token expiry in `api/src/auth/session.service.spec.ts`
+- [X] T018 [P] Add auth service coverage for password hashing and duplicate email rejection in `api/src/auth/auth.service.spec.ts`
 
 **Checkpoint**: Shared contracts, schema, auth primitives, and session rules ready.
 
@@ -64,15 +64,15 @@
 
 ### Implementation for User Story 1
 
-- [ ] T022 [US1] Implement `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, and `GET /auth/me` in `api/src/auth/auth.controller.ts`
-- [ ] T023 [US1] Implement account registration, login verification, guest-claim hook, and logout invalidation in `api/src/auth/auth.service.ts`
-- [ ] T024 [US1] Implement `GET /rooms/mine` in `api/src/room.controller.ts`
-- [ ] T025 [US1] Implement owned/joined room query and response mapping in `api/src/room.service.ts`
-- [ ] T026 [US1] Add account API client helpers in `frontend/src/lib/auth.ts`
-- [ ] T027 [US1] Extend app store with account session, auth actions, and saved-room loading in `frontend/src/stores/app-store.ts`
-- [ ] T028 [US1] Wire login, register, logout, and session restore on existing entry surface in `frontend/src/App.tsx`
-- [ ] T029 [US1] Replace mock "Minhas Salas" data with authenticated account room data in `frontend/src/features/dashboard/DashboardPages.tsx`
-- [ ] T030 [US1] Open saved rooms from dashboard with account-aware navigation in `frontend/src/features/dashboard/DashboardPages.tsx`
+- [X] T022 [US1] Implement `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, and `GET /auth/me` in `api/src/auth/auth.controller.ts`
+- [X] T023 [US1] Implement account registration, login verification, guest-claim hook, and logout invalidation in `api/src/auth/auth.service.ts`
+- [X] T024 [US1] Implement `GET /rooms/mine` in `api/src/room.controller.ts`
+- [X] T025 [US1] Implement owned/joined room query and response mapping in `api/src/room.service.ts`
+- [X] T026 [US1] Add account API client helpers in `frontend/src/lib/auth.ts`
+- [X] T027 [US1] Extend app store with account session, auth actions, and saved-room loading in `frontend/src/stores/app-store.ts`
+- [X] T028 [US1] Wire login, register, logout, and session restore on existing entry surface in `frontend/src/App.tsx`
+- [X] T029 [US1] Replace mock "Minhas Salas" data with authenticated account room data in `frontend/src/features/dashboard/DashboardPages.tsx`
+- [X] T030 [US1] Open saved rooms from dashboard with account-aware navigation in `frontend/src/features/dashboard/DashboardPages.tsx`
 
 **Checkpoint**: US1 fully functional and independently testable.
 
@@ -93,14 +93,14 @@
 
 ### Implementation for User Story 2
 
-- [ ] T035 [US2] Update `POST /rooms/:id/join` to accept account session and reuse membership in `api/src/room.controller.ts`
-- [ ] T036 [US2] Implement membership reuse, guest/account separation, and `lastSeenAt` updates in `api/src/room.service.ts`
-- [ ] T037 [US2] Implement `POST /rooms/:id/rejoin` in `api/src/room.controller.ts`
-- [ ] T038 [US2] Implement member-only room-session issuance for saved rooms in `api/src/room.service.ts`
-- [ ] T039 [US2] Update websocket join/reconnect flow to restore existing participant state in `api/src/room.gateway.ts`
-- [ ] T040 [US2] Persist room session keys by account and room to prevent guest/account collisions in `frontend/src/stores/app-store.ts`
-- [ ] T041 [US2] Send account token on join and use rejoin path for saved rooms in `frontend/src/App.tsx`
-- [ ] T042 [US2] Ensure dashboard room-entry actions prefer account rejoin without password in `frontend/src/features/dashboard/DashboardPages.tsx`
+- [X] T035 [US2] Update `POST /rooms/:id/join` to accept account session and reuse membership in `api/src/room.controller.ts`
+- [X] T036 [US2] Implement membership reuse, guest/account separation, and `lastSeenAt` updates in `api/src/room.service.ts`
+- [X] T037 [US2] Implement `POST /rooms/:id/rejoin` in `api/src/room.controller.ts`
+- [X] T038 [US2] Implement member-only room-session issuance for saved rooms in `api/src/room.service.ts`
+- [X] T039 [US2] Update websocket join/reconnect flow to restore existing participant state in `api/src/room.gateway.ts`
+- [X] T040 [US2] Persist room session keys by account and room to prevent guest/account collisions in `frontend/src/stores/app-store.ts`
+- [X] T041 [US2] Send account token on join and use rejoin path for saved rooms in `frontend/src/App.tsx`
+- [X] T042 [US2] Ensure dashboard room-entry actions prefer account rejoin without password in `frontend/src/features/dashboard/DashboardPages.tsx`
 
 **Checkpoint**: US1 and US2 work independently and together.
 
@@ -121,12 +121,12 @@
 
 ### Implementation for User Story 3
 
-- [ ] T047 [US3] Implement `PATCH /rooms/:id/members/me` in `api/src/room.controller.ts`
-- [ ] T048 [US3] Implement direct room display name/avatar update in `api/src/room.service.ts`
-- [ ] T049 [US3] Implement role-request persistence, host decision, and requester notification in `api/src/room.service.ts`
-- [ ] T050 [US3] Implement host-only `GET /rooms/:id/profile-requests` in `api/src/room.controller.ts`
-- [ ] T051 [US3] Add `room:profileUpdate`, `room:roleChangeRequest`, and `room:profileDecision` handlers in `api/src/room.gateway.ts`
-- [ ] T052 [US3] Broadcast updated `room:state`, pending requests, and decision events from `api/src/room.gateway.ts`
+- [X] T047 [US3] Implement `PATCH /rooms/:id/members/me` in `api/src/room.controller.ts`
+- [X] T048 [US3] Implement direct room display name/avatar update in `api/src/room.service.ts`
+- [X] T049 [US3] Implement role-request persistence, host decision, and requester notification in `api/src/room.service.ts`
+- [X] T050 [US3] Implement host-only `GET /rooms/:id/profile-requests` in `api/src/room.controller.ts`
+- [X] T051 [US3] Add `room:profileUpdate`, `room:roleChangeRequest`, and `room:profileDecision` handlers in `api/src/room.gateway.ts`
+- [X] T052 [US3] Broadcast updated `room:state`, pending requests, and decision events from `api/src/room.gateway.ts`
 - [ ] T053 [US3] Extend room store state for direct profile edits, pending role requests, and decision feedback in `frontend/src/stores/app-store.ts`
 - [ ] T054 [US3] Add direct room profile edit controls without layout redesign in `frontend/src/App.tsx`
 - [ ] T055 [US3] Add host queue and requester decision feedback UI in `frontend/src/App.tsx`
@@ -164,14 +164,14 @@
 - [ ] T062 [P] Add auth and room-membership notes to `README.md`
 - [ ] T063 [P] Verify REST and realtime responses never expose password hashes or room password hashes in `api/src/auth/auth.controller.spec.ts`
 - [ ] T064 [P] Verify expired account sessions are rejected for room-list, rejoin, and role-request flows in `api/src/auth/auth.controller.spec.ts`
-- [ ] T065 Run `npx prisma validate` in `api`
-- [ ] T066 Run `npm run build` in `api`
-- [ ] T067 Run `npm test` in `api`
-- [ ] T068 Run `npm run build` in `frontend`
-- [ ] T069 Run `npm run lint` in `frontend`
+- [X] T065 Run `npx prisma validate` in `api`
+- [X] T066 Run `npm run build` in `api`
+- [X] T067 Run `npm test` in `api`
+- [X] T068 Run `npm run build` in `frontend`
+- [X] T069 Run `npm run lint` in `frontend`
 - [ ] T070 Run Playwright account, room-entry, profile, and visual specs in `frontend`
-- [ ] T071 Run `docker compose config --quiet` in repository root
-- [ ] T072 Update implementation status and verification notes in `TASKS.md`
+- [X] T071 Run `docker compose config --quiet` in repository root
+- [X] T072 Update implementation status and verification notes in `TASKS.md`
 
 ---
 

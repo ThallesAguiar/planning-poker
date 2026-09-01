@@ -7,8 +7,9 @@ export type StoryStatus = 'pendente' | 'em_votacao' | 'em_discussao' | 'estimada
 export type VoteValue = number | 'café' | '?';
 export type TimerType = 'reflexao' | 'discussao';
 export type ConsensusCriterion = 'unanime' | 'media' | 'mediana' | 'decisao_po';
-export type RoomErrorCode = 'ROOM_NOT_FOUND' | 'PASSWORD_REQUIRED' | 'INVALID_PASSWORD' | 'FORBIDDEN' | 'INVALID_PHASE' | 'INVALID_VOTE' | 'ROOM_FULL' | 'AI_UNAVAILABLE';
-export const ROOM_ERROR_CODES: readonly RoomErrorCode[] = ['ROOM_NOT_FOUND', 'PASSWORD_REQUIRED', 'INVALID_PASSWORD', 'FORBIDDEN', 'INVALID_PHASE', 'INVALID_VOTE', 'ROOM_FULL', 'AI_UNAVAILABLE'];
+export type AuthErrorCode = 'EMAIL_ALREADY_EXISTS' | 'INVALID_CREDENTIALS' | 'UNAUTHENTICATED' | 'INVALID_INPUT';
+export type RoomErrorCode = 'ROOM_NOT_FOUND' | 'PASSWORD_REQUIRED' | 'INVALID_PASSWORD' | 'FORBIDDEN' | 'INVALID_PHASE' | 'INVALID_VOTE' | 'ROOM_FULL' | 'AI_UNAVAILABLE' | 'INVALID_PROFILE_UPDATE' | 'INVALID_ROLE_REQUEST' | 'PROFILE_REQUEST_NOT_FOUND';
+export const ROOM_ERROR_CODES: readonly RoomErrorCode[] = ['ROOM_NOT_FOUND', 'PASSWORD_REQUIRED', 'INVALID_PASSWORD', 'FORBIDDEN', 'INVALID_PHASE', 'INVALID_VOTE', 'ROOM_FULL', 'AI_UNAVAILABLE', 'INVALID_PROFILE_UPDATE', 'INVALID_ROLE_REQUEST', 'PROFILE_REQUEST_NOT_FOUND'];
 
 export type RoomConfig = {
   deckType: 'fibonacci' | 'fibonacci_modificado' | 't_shirt' | 'custom';
@@ -24,7 +25,12 @@ export type RoomConfig = {
   permiteRevotoIlimitado?: boolean;
 }
 
+export type AuthUser = { id: string; email: string; name: string; avatar: string };
+export type AuthSessionResponse = { user: AuthUser; token: string; expiresAt: string };
+export type AccountRoom = { id: string; code: string; name: string; status: RoomStatus; visibility: RoomVisibility; role: ParticipantRole; joinedAt: string; lastSeenAt: string; participantId: string; isOwner: boolean };
 export type Participant = { id: string; userId?: string; name: string; avatar: string; role: ParticipantRole; isAI: boolean; connected: boolean; hasVoted: boolean };
+export type RoomProfileUpdate = { name?: string; avatar?: string };
+export type RoomRoleChangeRequest = { id: string; requesterParticipantId: string; requesterName?: string; currentRole: ParticipantRole; requestedRole: ParticipantRole; status: 'pending' | 'approved' | 'rejected' | 'cancelled'; createdAt: string; decidedAt?: string | null };
 export type Story = { id: string; title: string; description: string; order: number; status: StoryStatus; finalValue?: VoteValue | null; rounds: number };
 export type ChatMessage = { id: string; author: string; role: ParticipantRole; text: string; type: 'commentario' | 'justificativa' | 'sistema'; createdAt: string };
 export type VoteReveal = { participantId: string; participantName: string; value: VoteValue };
@@ -35,6 +41,9 @@ export type RestError = { code: RoomErrorCode; message: string; details?: Record
 export type ClientToServerEvents = {
   'room:join': (payload: { roomId: string; name: string; avatar: string; role?: ParticipantRole; sessionId?: string; password?: string; token?: string }) => void;
   'room:leave': () => void;
+  'room:profileUpdate': (payload: RoomProfileUpdate) => void;
+  'room:roleChangeRequest': (payload: { role: ParticipantRole }) => void;
+  'room:profileDecision': (payload: { requestId: string; decision: 'approved' | 'rejected' }) => void;
   'room:configure': (payload: { config: Partial<RoomConfig> }) => void;
   'room:transferOwner': (payload: { participantId: string }) => void;
   'story:present': (payload: { storyId: string }) => void;
@@ -53,6 +62,8 @@ export type ServerToClientEvents = {
   'room:state': (state: RoomState) => void;
   'room:error': (payload: { message: string }) => void;
   'room:participantUpdate': (state: RoomState) => void;
+  'room:profileRequestPending': (payload: RoomRoleChangeRequest) => void;
+  'room:profileDecision': (payload: { requestId: string; decision: 'approved' | 'rejected'; decidedAt: string }) => void;
   'timer:tick': (payload: { type: TimerType; remainingSeconds: number }) => void;
   'timer:start': (payload: { type: TimerType; duracaoSegundos: number; deadline?: string }) => void;
   'vote:progress': (payload: { voted: number; total: number }) => void;

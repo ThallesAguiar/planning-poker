@@ -3,8 +3,12 @@ export type RoomStatus = 'aberta' | 'em_andamento' | 'encerrada';
 export type RoomVisibility = 'PUBLIC' | 'PRIVATE';
 export type ParticipantRole = 'PO' | 'Dev' | 'QA' | 'Scrum Master' | 'Observador' | 'IA_Agente';
 export type StoryStatus = 'pendente' | 'em_votacao' | 'em_discussao' | 'estimada' | 'pulada';
-export type VoteValue = number | 'café' | '?';
+export type VoteValue = number | 'cafÃ©' | '?';
 export type TimerType = 'reflexao' | 'discussao';
+export type ConsensusCriterion = 'unanime' | 'media' | 'mediana' | 'decisao_po';
+export type AuthErrorCode = 'EMAIL_ALREADY_EXISTS' | 'INVALID_CREDENTIALS' | 'UNAUTHENTICATED' | 'INVALID_INPUT';
+export type RoomErrorCode = 'ROOM_NOT_FOUND' | 'PASSWORD_REQUIRED' | 'INVALID_PASSWORD' | 'FORBIDDEN' | 'INVALID_PHASE' | 'INVALID_VOTE' | 'ROOM_FULL' | 'AI_UNAVAILABLE' | 'INVALID_PROFILE_UPDATE' | 'INVALID_ROLE_REQUEST' | 'PROFILE_REQUEST_NOT_FOUND';
+export declare const ROOM_ERROR_CODES: readonly RoomErrorCode[];
 export type RoomConfig = {
     deckType: 'fibonacci' | 'fibonacci_modificado' | 't_shirt' | 'custom';
     deckValues: VoteValue[];
@@ -14,7 +18,32 @@ export type RoomConfig = {
     maxParticipantes: number;
     votoAnonimo: boolean;
     revelacaoAutomatica: boolean;
-    criterioConsenso: 'unanime' | 'media' | 'mediana' | 'decisao_po';
+    criterioConsenso: ConsensusCriterion;
+    papeisPermitidos?: ParticipantRole[];
+    permiteRevotoIlimitado?: boolean;
+};
+export type AuthUser = {
+    id: string;
+    email: string;
+    name: string;
+    avatar: string;
+};
+export type AuthSessionResponse = {
+    user: AuthUser;
+    token: string;
+    expiresAt: string;
+};
+export type AccountRoom = {
+    id: string;
+    code: string;
+    name: string;
+    status: RoomStatus;
+    visibility: RoomVisibility;
+    role: ParticipantRole;
+    joinedAt: string;
+    lastSeenAt: string;
+    participantId: string;
+    isOwner: boolean;
 };
 export type Participant = {
     id: string;
@@ -25,6 +54,20 @@ export type Participant = {
     isAI: boolean;
     connected: boolean;
     hasVoted: boolean;
+};
+export type RoomProfileUpdate = {
+    name?: string;
+    avatar?: string;
+};
+export type RoomRoleChangeRequest = {
+    id: string;
+    requesterParticipantId: string;
+    requesterName?: string;
+    currentRole: ParticipantRole;
+    requestedRole: ParticipantRole;
+    status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+    createdAt: string;
+    decidedAt?: string | null;
 };
 export type Story = {
     id: string;
@@ -54,6 +97,7 @@ export type RoomState = {
     code: string;
     status: RoomStatus;
     visibility: RoomVisibility;
+    ownerId?: string;
     config: RoomConfig;
     participants: Participant[];
     stories: Story[];
@@ -61,7 +105,29 @@ export type RoomState = {
     phase: 'lobby' | 'votacao' | 'discussao' | 'revelada' | 'finalizada';
     votes: VoteReveal[];
     remainingSeconds: number | null;
+    timerType?: TimerType | null;
     messages: ChatMessage[];
+};
+export type ReportSummary = {
+    id: string;
+    roomId: string;
+    generatedAt: string;
+    stories: Story[];
+    participation: {
+        participantId: string;
+        votes: number;
+        comments: number;
+    }[];
+    achievements: string[];
+    exportUrls?: {
+        csv?: string;
+        pdf?: string;
+    };
+};
+export type RestError = {
+    code: RoomErrorCode;
+    message: string;
+    details?: Record<string, unknown>;
 };
 export type ClientToServerEvents = {
     'room:join': (payload: {
@@ -74,6 +140,20 @@ export type ClientToServerEvents = {
         token?: string;
     }) => void;
     'room:leave': () => void;
+    'room:profileUpdate': (payload: RoomProfileUpdate) => void;
+    'room:roleChangeRequest': (payload: {
+        role: ParticipantRole;
+    }) => void;
+    'room:profileDecision': (payload: {
+        requestId: string;
+        decision: 'approved' | 'rejected';
+    }) => void;
+    'room:configure': (payload: {
+        config: Partial<RoomConfig>;
+    }) => void;
+    'room:transferOwner': (payload: {
+        participantId: string;
+    }) => void;
     'story:present': (payload: {
         storyId: string;
     }) => void;
@@ -95,15 +175,29 @@ export type ClientToServerEvents = {
     'reaction:send': (payload: {
         value: string;
     }) => void;
+    'report:generate': () => void;
+    'ai:requestVote': () => void;
 };
 export type ServerToClientEvents = {
     'room:state': (state: RoomState) => void;
     'room:error': (payload: {
         message: string;
     }) => void;
+    'room:participantUpdate': (state: RoomState) => void;
+    'room:profileRequestPending': (payload: RoomRoleChangeRequest) => void;
+    'room:profileDecision': (payload: {
+        requestId: string;
+        decision: 'approved' | 'rejected';
+        decidedAt: string;
+    }) => void;
     'timer:tick': (payload: {
         type: TimerType;
         remainingSeconds: number;
+    }) => void;
+    'timer:start': (payload: {
+        type: TimerType;
+        duracaoSegundos: number;
+        deadline?: string;
     }) => void;
     'vote:progress': (payload: {
         voted: number;
@@ -115,6 +209,7 @@ export type ServerToClientEvents = {
         average: number | null;
         min: number | null;
         max: number | null;
+        mode?: VoteValue | null;
     }) => void;
     'discussion:start': (payload: {
         remainingSeconds: number;
@@ -123,7 +218,16 @@ export type ServerToClientEvents = {
         value: string;
         participantId: string;
     }) => void;
+    'discussion:end': (payload: {
+        storyId?: string;
+        reason?: 'timeout' | 'manual' | 'revote';
+    }) => void;
     'report:ready': (payload: {
         reportId: string;
+        url?: string;
+    }) => void;
+    'ai:status': (payload: {
+        status: 'voted' | 'unavailable' | 'error';
+        message?: string;
     }) => void;
 };

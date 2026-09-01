@@ -1,30 +1,10 @@
+import { useEffect } from "react";
 import { Link, NavLink } from "react-router-dom";
-
-const ROOMS = [
-  {
-    name: "Sprint 24 - Time A",
-    code: "planning-demo",
-    players: "8/8 jogadores",
-    status: "Em andamento",
-    activity: "ha 2 min",
-  },
-  {
-    name: "Refatoracao do Checkout",
-    code: "refac-checkout",
-    players: "5/8 jogadores",
-    status: "Aguardando",
-    activity: "ha 1 dia",
-  },
-  {
-    name: "Planejamento Q2",
-    code: "q2-planning",
-    players: "3/8 jogadores",
-    status: "Finalizada",
-    activity: "ha 3 dias",
-  },
-];
+import { loadMyRooms } from "../../lib/auth";
+import { useAppStore } from "../../stores/app-store";
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
+  const { account } = useAppStore();
   return (
     <main className="dashboard-shell">
       <aside className="dashboard-nav">
@@ -39,9 +19,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <NavLink to="/settings">Configuracoes</NavLink>
         </nav>
         <div className="dashboard-user">
-          <span>J1</span>
+          <span>{account?.name?.slice(0, 2).toUpperCase() ?? "J1"}</span>
           <div>
-            <b>Jogador 1</b>
+            <b>{account?.name ?? "Jogador 1"}</b>
             <small>Desenvolvedor</small>
           </div>
         </div>
@@ -52,6 +32,16 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 }
 
 export function MyRoomsPage() {
+  const { accountToken, accountRooms, setAccountRooms } = useAppStore();
+
+  useEffect(() => {
+    if (!accountToken) {
+      setAccountRooms([]);
+      return;
+    }
+    void loadMyRooms(accountToken).then(setAccountRooms).catch(() => setAccountRooms([]));
+  }, [accountToken, setAccountRooms]);
+
   return (
     <DashboardShell>
       <div className="dashboard-title">
@@ -64,15 +54,24 @@ export function MyRoomsPage() {
         </Link>
       </div>
       <div className="room-grid">
-        {ROOMS.map((room) => (
+        {accountRooms.length === 0 && (
+          <article className="room-card">
+            <h2>Nenhuma sala vinculada</h2>
+            <p>Entre ou crie uma sala com sua conta para ela aparecer aqui.</p>
+            <Link className="primary room-action" to="/">
+              Entrar
+            </Link>
+          </article>
+        )}
+        {accountRooms.map((room) => (
           <article className="room-card" key={room.code}>
             <h2>{room.name}</h2>
             <p>Codigo: {room.code}</p>
             <div className="room-meta">
-              <span>{room.players}</span>
+              <span>{room.role}</span>
               <span>{room.status}</span>
             </div>
-            <small>Ultima atividade: {room.activity}</small>
+            <small>Ultima atividade: {new Date(room.lastSeenAt).toLocaleString()}</small>
             {room.status === "Finalizada" ? (
               <Link className="secondary room-action" to="/report/demo">
                 Ver relatorio

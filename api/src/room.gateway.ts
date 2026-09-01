@@ -9,6 +9,7 @@ import { SessionService } from './auth/session.service.js';
 import { TimerService } from './realtime/timer.service.js';
 import { AiParticipantService } from './ai/ai-participant.service.js';
 import { RoomStateService } from './realtime/room-state.service.js';
+import { RoomService } from './room.service.js';
 
 type VoteValue = number | 'cafe' | '?';
 type Role = 'PO' | 'Dev' | 'QA' | 'ScrumMaster' | 'Observador' | 'IA_Agente';
@@ -27,7 +28,7 @@ export class RoomGateway {
   private readonly states = new Map<string, State>();
   private readonly clientRooms = new Map<string, string>();
 
-  constructor(private readonly prisma: PrismaService, private readonly authorization: AuthorizationService, private readonly sessions: SessionService, private readonly timers: TimerService, private readonly ai: AiParticipantService, private readonly roomStates: RoomStateService) {}
+  constructor(private readonly prisma: PrismaService, private readonly authorization: AuthorizationService, private readonly sessions: SessionService, private readonly timers: TimerService, private readonly ai: AiParticipantService, private readonly roomStates: RoomStateService, private readonly rooms: RoomService) {}
 
   async afterInit(server: Server) {
     const url = process.env.REDIS_URL;
@@ -70,7 +71,7 @@ export class RoomGateway {
       if (!state.passwordHash || !(await bcrypt.compare(payload.password, state.passwordHash))) { client.emit('room:error', { message: 'INVALID_PASSWORD' }); return; }
     }
     client.data.userId = userId;
-    const user = await this.prisma.user.upsert({ where: { id: userId }, update: { name: payload.name, avatarUrl: payload.avatar }, create: { id: userId, name: payload.name, avatarUrl: payload.avatar, isGuest: true } });
+    const user = await this.prisma.user.upsert({ where: { id: userId }, update: {}, create: { id: userId, name: payload.name, avatarUrl: payload.avatar, isGuest: true } });
     let participant = await this.prisma.roomParticipant.findUnique({ where: { roomId_userId: { roomId: state.dbRoomId, userId: user.id } } });
     if (!participant && state.participants.filter((item) => item.connected).length >= state.config.maxParticipantes) {
       client.emit('room:error', { message: 'ROOM_FULL' });
@@ -82,16 +83,74 @@ export class RoomGateway {
       client.emit('room:error', { message: 'FORBIDDEN' });
       return;
     }
-    if (!participant) participant = await this.prisma.roomParticipant.create({ data: { roomId: state.dbRoomId, userId: user.id, role, isAI: false } });
+    if (!participant) participant = await this.prisma.roomParticipant.create({ data: { roomId: state.dbRoomId, userId: user.id, role, isAI: false, roomDisplayName: payload.name, roomAvatarUrl: payload.avatar } });
+    else participant = await this.prisma.roomParticipant.update({ where: { id: participant.id }, data: { status: 'ativo', lastSeenAt: new Date() } });
     client.data.participantId = participant.id;
     state.participants = state.participants.filter((item) => item.userId !== user.id);
-    state.participants.push({ id: participant.id, userId: user.id, name: user.name, avatar: user.avatarUrl ?? '', role: participant.role as Role, isAI: participant.isAI, connected: true, hasVoted: state.votes.some((vote) => vote.participantId === participant!.id) });
+    state.participants.push({ id: participant.id, userId: user.id, name: participant.roomDisplayName ?? user.name, avatar: participant.roomAvatarUrl ?? user.avatarUrl ?? '', role: participant.role as Role, isAI: participant.isAI, connected: true, hasVoted: state.votes.some((vote) => vote.participantId === participant!.id) });
     if (state.ownerId === 'pending') { state.ownerId = participant.id; await this.prisma.room.update({ where: { id: state.dbRoomId }, data: { ownerId: participant.id } }); }
     this.states.set(roomKey, state); this.clientRooms.set(client.id, roomKey); client.join(roomKey); this.broadcast(roomKey);
   }
 
   @SubscribeMessage('room:leave') leave(@ConnectedSocket() client: Client) { this.removeClient(client); }
   handleDisconnect(client: Client) { this.removeClient(client); }
+
+  @SubscribeMessage('room:profileUpdate')
+  async profileUpdate(@ConnectedSocket() client: Client, @MessageBody() payload: { name?: string; avatar?: string }) {
+    const state = this.stateFor(client);
+    const participant = state?.participants.find((item) => item.id === this.participantId(client));
+    if (!state || !participant || (!payload.name && payload.avatar === undefined)) {
+      client.emit('room:error', { message: 'INVALID_PROFILE_UPDATE' });
+      return;
+    }
+    await this.prisma.roomParticipant.update({
+      where: { id: participant.id },
+      data: {
+        roomDisplayName: payload.name?.trim() || participant.name,
+        roomAvatarUrl: payload.avatar ?? participant.avatar,
+        lastSeenAt: new Date(),
+      },
+    });
+    participant.name = payload.name?.trim() || participant.name;
+    participant.avatar = payload.avatar ?? participant.avatar;
+    this.broadcast(state.roomId);
+  }
+
+  @SubscribeMessage('room:roleChangeRequest')
+  async roleChangeRequest(@ConnectedSocket() client: Client, @MessageBody() payload: { role: Role }) {
+    const state = this.stateFor(client);
+    const participant = state?.participants.find((item) => item.id === this.participantId(client));
+    if (!state || !participant || !state.config.papeisPermitidos.includes(payload.role)) {
+      client.emit('room:error', { message: 'INVALID_ROLE_REQUEST' });
+      return;
+    }
+    try {
+      const request = await this.rooms.requestRoleChange(state.dbRoomId, participant.id, payload.role);
+      this.server.to(state.roomId).emit('room:profileRequestPending', request);
+    } catch {
+      client.emit('room:error', { message: 'INVALID_ROLE_REQUEST' });
+    }
+  }
+
+  @SubscribeMessage('room:profileDecision')
+  async profileDecision(@ConnectedSocket() client: Client, @MessageBody() payload: { requestId: string; decision: 'approved' | 'rejected' }) {
+    const state = this.authorized(client, 'PO');
+    if (!state || !['approved', 'rejected'].includes(payload.decision)) {
+      client.emit('room:error', { message: 'FORBIDDEN' });
+      return;
+    }
+    try {
+      const decision = await this.rooms.decideRoleChange(state.dbRoomId, this.participantId(client), payload.requestId, payload.decision);
+      if (payload.decision === 'approved') {
+        const participant = state.participants.find((item) => item.id === decision.requesterParticipantId);
+        if (participant) participant.role = decision.requestedRole as Role;
+      }
+      this.server.to(state.roomId).emit('room:profileDecision', { requestId: decision.requestId, decision: decision.decision, decidedAt: decision.decidedAt });
+      this.broadcast(state.roomId);
+    } catch {
+      client.emit('room:error', { message: 'PROFILE_REQUEST_NOT_FOUND' });
+    }
+  }
 
   @SubscribeMessage('room:configure')
   async configure(@ConnectedSocket() client: Client, @MessageBody() payload: { config: Partial<Config> }) {
@@ -196,7 +255,7 @@ export class RoomGateway {
     const room = await this.prisma.room.findUnique({ where: { id: roomId }, include });
     if (!room) throw new Error('ROOM_NOT_FOUND');
     const config = { ...defaultConfig, ...(room.config ? { ...room.config, papeisPermitidos: room.config.papeisPermitidos as Role[], deckValues: room.config.deckValues as VoteValue[] } : {}) } as Config;
-    const state: State = { roomId: roomKey, dbRoomId: room.id, name: room.name, code: room.inviteCode, status: room.status as State['status'], visibility: room.visibility as State['visibility'], passwordHash: room.passwordHash, ownerId: room.ownerId, config, participants: room.participants.map((item) => ({ id: item.id, userId: item.userId, name: item.user.name, avatar: item.user.avatarUrl ?? '', role: item.role as Role, isAI: item.isAI, connected: false, hasVoted: false })), stories: room.stories, phase: 'lobby', votes: [], remainingSeconds: null, timerType: null, messages: room.messages.map((item) => ({ id: item.id, author: room!.participants.find((person) => person.id === item.participantId)?.user.name ?? 'Sistema', role: room!.participants.find((person) => person.id === item.participantId)?.role as Role ?? 'Dev', text: item.text, type: item.type as Message['type'], createdAt: item.createdAt.toISOString() })) };
+    const state: State = { roomId: roomKey, dbRoomId: room.id, name: room.name, code: room.inviteCode, status: room.status as State['status'], visibility: room.visibility as State['visibility'], passwordHash: room.passwordHash, ownerId: room.ownerId, config, participants: room.participants.map((item) => ({ id: item.id, userId: item.userId, name: item.roomDisplayName ?? item.user.name, avatar: item.roomAvatarUrl ?? item.user.avatarUrl ?? '', role: item.role as Role, isAI: item.isAI, connected: false, hasVoted: false })), stories: room.stories, phase: 'lobby', votes: [], remainingSeconds: null, timerType: null, messages: room.messages.map((item) => ({ id: item.id, author: room!.participants.find((person) => person.id === item.participantId)?.roomDisplayName ?? room!.participants.find((person) => person.id === item.participantId)?.user.name ?? 'Sistema', role: room!.participants.find((person) => person.id === item.participantId)?.role as Role ?? 'Dev', text: item.text, type: item.type as Message['type'], createdAt: item.createdAt.toISOString() })) };
     const activeStory = room.stories.find((item) => item.status === 'em_votacao' || item.status === 'em_discussao');
     if (activeStory) {
       const round = await this.prisma.voteRound.findFirst({ where: { storyId: activeStory.id, endedAt: null }, orderBy: { number: 'desc' }, include: { votes: true } });

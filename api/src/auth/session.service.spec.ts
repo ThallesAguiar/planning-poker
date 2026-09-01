@@ -11,4 +11,21 @@ describe('SessionService', () => {
   it('rejects malformed token', () => {
     expect(() => new SessionService().verify('invalid-token')).toThrow();
   });
+
+  it('issues account token with 12 hour expiry by default', () => {
+    const service = new SessionService();
+    const issued = service.issueAccount('user-1');
+
+    expect(service.verifyAccount(issued.token)).toMatchObject({ type: 'account', userId: 'user-1' });
+    expect(new Date(issued.expiresAt).getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it('rejects revoked account token', () => {
+    const service = new SessionService();
+    const issued = service.issueAccount('user-1');
+
+    service.revokeAccount(issued.token);
+
+    expect(() => service.verifyAccount(issued.token)).toThrow();
+  });
 });

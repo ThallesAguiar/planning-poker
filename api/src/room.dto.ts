@@ -43,3 +43,29 @@ export class JoinRoomDto {
   @IsString()
   password?: string;
 }
+
+export class UpdateRoomProfileDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  avatar?: string;
+}
+
+export class RequestRoleChangeDto {
+  @IsString()
+  @IsIn(['PO', 'Dev', 'QA', 'ScrumMaster', 'Observador'])
+  role!: string;
+}
+
+export class DecideRoleChangeDto {
+  @IsString()
+  requestId!: string;
+
+  @IsString()
+  @IsIn(['approved', 'rejected'])
+  decision!: 'approved' | 'rejected';
+}

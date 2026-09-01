@@ -8,6 +8,8 @@ import { RoomService } from './room.service.js';
 import { PrismaService } from './prisma.service.js';
 import { AuthorizationService } from './auth/authorization.service.js';
 import { SessionService } from './auth/session.service.js';
+import { AuthController } from './auth/auth.controller.js';
+import { AuthService } from './auth/auth.service.js';
 import { TimerService } from './realtime/timer.service.js';
 import { ReportController } from './reports/report.controller.js';
 import { ReportService } from './reports/report.service.js';
@@ -30,7 +32,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       serviceId: 'api',
     }),
   ],
-  controllers: [AppController, RoomController, ReportController],
-  providers: [AppService, PrismaService, RoomService, RoomGateway, AuthorizationService, SessionService, TimerService, ReportService, AchievementsService, PdfExportService, LlmClient, AiParticipantService, RoomStateService, CorrelationLogger],
+  controllers: [AppController, AuthController, RoomController, ReportController],
+  providers: [AppService, PrismaService, AuthService, RoomService, RoomGateway, AuthorizationService, SessionService, TimerService, ReportService, AchievementsService, PdfExportService, LlmClient, AiParticipantService, RoomStateService, CorrelationLogger],
 })
 export class AppModule {}

@@ -28,6 +28,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Trocar `prisma db push` por migrations versionadas em producao; entrypoint usa `npm run db:migrate:deploy`.
 - [~] Correlation ID HTTP e logger com redacao de segredos adicionados; correlação completa de eventos realtime ainda pendente.
 - [ ] Configurar segredos reais fora de valores default de desenvolvimento.
+- [~] Feature Spec Kit `002-user-auth-rooms` em implementacao; env examples receberam `ACCOUNT_SESSION_TTL`, mas segredos reais seguem externos.
 
 ## 2. Shared types e contrato Socket.IO
 
@@ -45,6 +46,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [~] Alinhar nomes de campos com prompt: `nome`, `avatarUrl`, `papel`, `valor`.
 - [~] Completar contratos de timer, configuracao, apresentacao, discussao, revote, IA e relatorio.
 - [ ] Adicionar DTOs compartilhados para validacao de payloads.
+- [~] Tipos compartilhados de auth, salas vinculadas, perfil de sala e solicitacao de papel adicionados para `002-user-auth-rooms`; gateway ainda mantem tipos locais.
 
 ## 3. Banco de dados e persistencia
 
@@ -67,6 +69,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Gerar migration Prisma versionada `0001_realtime_baseline`.
 - [ ] Criar seed com 4 participantes e 1 IA.
 - [ ] Implementar consultas de historico e relatorios anteriores.
+- [~] Schema/migration de autenticacao de usuario, perfil por sala, `lastSeenAt` e solicitacao de papel adicionados; migration ainda precisa ser aplicada em banco real.
 
 ## 4. Backend NestJS e REST
 
@@ -87,9 +90,9 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 
 - [~] CRUD completo de salas, historias e configuracoes.
 - [ ] Fluxo de convite por codigo/link.
-- [ ] Autenticacao leve com JWT.
+- [~] Autenticacao leve com JWT de conta implementada para registro, login, me e logout em `api/src/auth`; cobertura REST completa ainda pendente.
 - [~] Guardas e autorizacao por papel, principalmente PO.
-- [ ] Endpoint para login, reconexao e sessao de convidado.
+- [~] Endpoints de login, cadastro, logout, `GET /auth/me`, `GET /rooms/mine`, join com conta e rejoin de membro adicionados; E2E completo ainda pendente.
 - [~] Endpoint para listar relatorios e sessoes passadas com sessao JWT; rota de visualizacao implementada, validacao E2E ainda pendente.
 - [~] Exportacao de relatorio em CSV e PDF; rotas e botoes frontend implementados, testes de download/compatibilidade ainda pendentes.
 
@@ -130,6 +133,8 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [~] Validar payloads, sala, historia, participante e deck no servidor.
 - [~] Validar autorizacao PO/Scrum Master em eventos administrativos.
 - [x] Emitir `report:ready` apos gerar relatorio.
+- [~] `room:join` passou a restaurar participante existente e usar nome/avatar especificos da sala; eventos dedicados de perfil/papel ainda pendentes.
+- [~] Eventos `room:profileUpdate`, `room:roleChangeRequest` e `room:profileDecision` adicionados no gateway; UI e E2E multiusuario ainda pendentes.
 
 ## 6. Frontend React
 
@@ -161,6 +166,13 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Telas frontend de minhas salas, perfil e configuracoes adicionadas com navegacao lateral.
 - [x] Navegacao de entrada normaliza codigo, rota ou URL de sala antes de abrir `/room/:code`.
 - [x] Entrada pela home autentica e abre direto mesa de poker, inclusive em sala privada com senha.
+- [x] Tela raiz organizada em dois cartoes empilhados na coluna direita: `Sua conta` (login/cadastro, `account-card`) acima e `Mesa` (`join-panel` dentro de `home-stack`) abaixo, com estilos proprios para o painel de conta e erro de autenticacao separado (`account-error`); rotulos de senha desambiguados ("Senha da conta" e "Senha da sala").
+- [x] Tela raiz agora mostra um unico card por vez via `card-switch` (abas `Sua conta` e `Mesa`) em vez de empilhar os dois; `homeCard` controla qual card renderiza na home e a rota `/room/:code` continua exibindo apenas a mesa.
+- [x] Card de login (`Sua conta`) passou a ser o padrao na home (`homeCard` inicia em `account`); testes e2e atualizados para abrir a aba `Mesa` quando interagem com a sala.
+- [x] Campo "Senha da conta" ganhou icone de mostrar/ocultar senha (mesmo padrao dos campos de sala).
+- [x] Cadastro agora tem campos visiveis de `Nome` e seletor de avatar no card `Sua conta` (modo Cadastro); avatares substituidos por opcoes serias de poker (`♠ ♥ ♦ ♣ 🃏 🎩`) em vez de emojis animais.
+- [x] `POST /auth/register` e `POST /auth/login` voltaram a responder: o container Docker da API rodava build de 29/08 sem o modulo de auth; rebuild `docker compose build api && docker compose up -d api` expoe as rotas e registro retorna `201`.
+- [x] Nome e avatar na tela da mesa ficam fixos quando logado (vindos do perfil da conta, com `account-avatar-fixed`); backend `RoomService.joinSession` nao sobrescreve mais o perfil global da conta ao entrar na sala (usa `findUnique` e identidade da conta no `RoomParticipant`); teste unitario em `room.service.spec.ts` valida a nao-sobrescricao.
 - [x] Rota direta `/room/:code` reaproveita a mesma tela inicial de entrada, sem segunda tela duplicada.
 - [x] Recarregar `/room/:code` com sessao salva reconecta direto para mesa sem piscar tela de entrada.
 - [x] Cliente Socket.IO da mesa passou a usar `websocket` direto, evitando enxurrada de requests `transport=polling` observada em 29/08/2026.
@@ -191,6 +203,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [ ] Tela dedicada de relatorio com exportacoes.
 - [~] Estados de erro, reconexao, carregamento e sala encerrada.
 - [ ] Teste visual e responsivo em desktop e mobile.
+- [~] Login/cadastro basico, sessao de conta, `Minhas Salas` via API e rejoin por conta adicionados sem redesenho amplo; testes Playwright especificos ainda pendentes.
 
 ## 7. Participante IA
 
@@ -254,6 +267,11 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Frontend: correção do loop de restauração com sessão inválida e limite de reconexão; build, lint e testes E2E de entrada executados.
 - [x] Backend: API rebuildada após permitir reconexão autenticada de sala privada; frontend: build, lint e 7 testes E2E em `http://localhost:5173` aprovados.
 - [x] Frontend: `npm run build`, `npm run lint` e 6 testes e2e (room-entry.spec.ts, incluindo reload sem flash) aprovados apos redesenhar o loading de reconexao fora do visual de entrada e corrigir guard `restoringRoom && !joined`; e2e inicial revelou travamento na tela de reconexao ao levar sessao da home para a rota da sala, resolvido pelo novo guard.
+- [x] Frontend: `npm run build`, `npm run lint` e 8 testes e2e (room-entry.spec.ts) aprovados apos separar a camada de conta da camada de sala na home; testes que usavam indice de input migrados para seletores por label e rotulos de senha desambiguados.
+- [x] Frontend: `npm run build`, `npm run lint` e 9 testes e2e (room-entry.spec.ts) aprovados apos tornar os cards da home exclusivos com seletor `card-switch`; novo teste cobre alternancia entre `Sua conta` e `Mesa` mostrando um card por vez.
+- [x] Frontend: `npm run build`, `npm run lint` e 9 testes e2e aprovados apos definir o card de login como padrao da home; testes de entrada em sala agora abrem a aba `Mesa` explicitamente.
+- [x] API: `npm run build` e 24 testes aprovados; `docker compose build api` + `docker compose up -d api` revalidados com rotas `/auth/*` mapeadas no container. Frontend: `npm run build`, `npm run lint` e 10 testes e2e aprovados apos adicionar campos de nome/avatar no cadastro e avatares de poker; novo teste cobre cadastro completo (registro, nome, avatar e conta criada).
+- [x] API: `npm run build` e 25 testes (14 arquivos) aprovados apos `joinSession` parar de sobrescrever perfil da conta; `docker compose build api` + `docker compose up -d api` revalidados. Frontend: `npm run build`, `npm run lint` e 10 e2e aprovados apos fixar nome/avatar do perfil na entrada da mesa quando logado.
 - [x] Frontend: `npm run build`, `npm run lint` e `FRONTEND_URL=http://localhost:5173 npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` com 8 testes aprovados apos separar estados de entrada/loading/mesa, exigir `room:state` antes de renderizar mesa e remover disconnect indevido na troca de rota.
 - [x] Docker: `docker compose config --quiet` revalidado apos alinhar `.env.example` da raiz, compose e exemplos por camada.
 - [x] `.env.example` da raiz e `api/.env.example` documentados com seus cenarios (Docker vs execucao local) e README atualizado orientando a manter os dois sincronizados; `docker compose config --quiet` revalidado.
@@ -322,6 +340,9 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Frontend: download autenticado de PDF e exibicao de achievements adicionados; build/lint aprovados.
 - [~] Teste unitario de exportacao PDF adicionado; teste de download HTTP e compatibilidade de arquivo ainda pendentes.
 - [~] Relatorio agora calcula divergencia numerica inicial/final quando ha votos; tempos detalhados e validacao E2E ainda pendentes.
+- [x] Feature `002-user-auth-rooms`: `npx prisma validate`, `npx prisma generate`, `api npm run build`, testes unitarios de auth/session e `frontend npm run build` executados apos foundation de autenticacao e salas salvas.
+- [x] Feature `002-user-auth-rooms`: `api npm test` completo aprovado com 13 arquivos e 24 testes; `frontend npm run lint` e `docker compose config --quiet` aprovados.
+- [~] Feature `002-user-auth-rooms`: tasks T001-T018, T022-T030, T035-T042, T047-T052, T065-T069 e T071-T072 marcadas em `specs/002-user-auth-rooms/tasks.md`; testes REST/E2E de US1/US2, UI de US3 e visual/E2E de US4 ainda pendentes.
 
 ### Pendente
 
@@ -340,7 +361,8 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 1. Completar Phase 2: `room-state.service.ts`, atomicidade de timer e testes fundacionais.
 2. Gateway completo com contratos shared e transicoes isoladas em `round.service.ts`.
 3. Redis adapter e reconexao persistente.
-4. Fluxos REST de autenticacao, convite e historico.
-5. Frontend completo alinhado aos eventos reais.
-6. Limites de custo, fallback humano e testes de falha IA.
-7. Completar relatorios (metricas/DTO/permissoes), testes de exportacao e E2E.
+4. Completar testes REST/E2E de `002-user-auth-rooms` para US1/US2 antes de marcar historia como concluida.
+5. Implementar US3 de `002-user-auth-rooms`: perfil direto por sala e troca de papel aprovada pelo host.
+6. Frontend completo alinhado aos eventos reais.
+7. Limites de custo, fallback humano e testes de falha IA.
+8. Completar relatorios (metricas/DTO/permissoes), testes de exportacao e E2E.

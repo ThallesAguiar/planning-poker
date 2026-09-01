@@ -33,9 +33,11 @@ model User {
   id String @id @default(cuid())
   name String
   avatarUrl String?
-  email String?
+  email String? @unique
+  passwordHash String?
   isGuest Boolean @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   participants RoomParticipant[]
 }
 model Room {
@@ -49,6 +51,7 @@ model Room {
   createdAt DateTime @default(now())
   config RoomConfig?
   participants RoomParticipant[]
+  roleChangeRequests RoomRoleChangeRequest[]
   stories Story[]
   messages ChatMessage[]
   reports SprintReport[]
@@ -75,12 +78,31 @@ model RoomParticipant {
   role ParticipantRole
   isAI Boolean @default(false)
   status String @default("ativo")
+  roomDisplayName String?
+  roomAvatarUrl String?
   joinedAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   votes Vote[]
   messages ChatMessage[]
+  roleRequests RoomRoleChangeRequest[] @relation("RoleRequester")
+  roleDecisions RoomRoleChangeRequest[] @relation("RoleDecider")
   @@unique([roomId, userId])
+}
+model RoomRoleChangeRequest {
+  id String @id @default(cuid())
+  roomId String
+  requesterParticipantId String
+  currentRole ParticipantRole
+  requestedRole ParticipantRole
+  status String @default("pending")
+  decidedByParticipantId String?
+  createdAt DateTime @default(now())
+  decidedAt DateTime?
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  requester RoomParticipant @relation("RoleRequester", fields: [requesterParticipantId], references: [id], onDelete: Cascade)
+  decidedBy RoomParticipant? @relation("RoleDecider", fields: [decidedByParticipantId], references: [id], onDelete: SetNull)
 }
 model Story {
   id String @id @default(cuid())

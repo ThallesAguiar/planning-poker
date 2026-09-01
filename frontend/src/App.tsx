@@ -2,13 +2,14 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { socket } from "./lib/socket";
+import { authHeaders, loginAccount, logoutAccount, registerAccount } from "./lib/auth";
 import { useAppStore } from "./stores/app-store";
 import { RoomConfiguration } from "./features/room/RoomConfiguration";
 import { AIParticipant } from "./features/table/AIParticipant";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 const ENTRY_CARDS = ["1", "3", "5", "8", "13", "?"];
-const AVATARS = ["🦊", "🐼", "🐙", "🦄", "🐸", "🦁"];
+const AVATARS = ["♠", "♥", "♦", "♣", "🃏", "🎩"];
 
 function normalizeRoomCode(value: string) {
   const trimmed = value.trim();
@@ -38,7 +39,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
   const navigate = useNavigate();
   const { code } = useParams<{ code: string }>();
   const routeCode = mode === "room" ? decodeURIComponent(code ?? "") : "";
-  const { state, setState, clearState } = useAppStore();
+  const { state, setState, clearState, account, accountToken, setAccountSession, clearAccountSession } = useAppStore();
+  const sessionScope = account?.id ?? "guest";
+  const roomStorageKey = (kind: "token" | "session" | "pending-join" | "password", target: string) =>
+    `planning-poker-${kind}:${sessionScope}:${target}`;
   const [roomId, setRoomId] = useState(routeCode || "planning-demo");
   const [name, setName] = useState(
     () =>
@@ -54,9 +58,14 @@ export function App({ mode }: { mode: "home" | "room" }) {
   const [joinError, setJoinError] = useState("");
   const [roomIsPrivate, setRoomIsPrivate] = useState(false);
   const [homeMode, setHomeMode] = useState<"join" | "create">("join");
+  const [homeCard, setHomeCard] = useState<"account" | "room">("account");
   const [roomName, setRoomName] = useState("Sprint Planning");
   const [createPrivate, setCreatePrivate] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [email, setEmail] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
+  const [accountError, setAccountError] = useState("");
   const [message, setMessage] = useState("");
   const [selected, setSelected] = useState<number | string | null>(null);
   const [joined, setJoined] = useState(false);
@@ -65,8 +74,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
   const [restoringRoom, setRestoringRoom] = useState(() => {
     if (mode !== "room" || !routeCode) return false;
     return Boolean(
-      localStorage.getItem(`planning-poker-token:${routeCode}`) ||
-        sessionStorage.getItem(`planning-poker-pending-join:${routeCode}`),
+      localStorage.getItem(roomStorageKey("token", routeCode)) ||
+        sessionStorage.getItem(roomStorageKey("pending-join", routeCode)),
     );
   });
   const [aiStatus, setAiStatus] = useState<
@@ -86,7 +95,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
       setJoined(true);
       setRestoringRoom(false);
       if (next?.code) {
-        sessionStorage.removeItem(`planning-poker-pending-join:${next.code}`);
+        sessionStorage.removeItem(roomStorageKey("pending-join", next.code));
       }
     };
     const tick = (next: { remainingSeconds: number }) => {
@@ -104,10 +113,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
             : "Senha invalida ou sala indisponivel.",
       );
       if (routeCode) {
-        localStorage.removeItem(`planning-poker-token:${routeCode}`);
-        localStorage.removeItem(`planning-poker-session:${routeCode}`);
-        sessionStorage.removeItem(`planning-poker-pending-join:${routeCode}`);
-        sessionStorage.removeItem(`planning-poker-password:${routeCode}`);
+        localStorage.removeItem(roomStorageKey("token", routeCode));
+        localStorage.removeItem(roomStorageKey("session", routeCode));
+        sessionStorage.removeItem(roomStorageKey("pending-join", routeCode));
+        sessionStorage.removeItem(roomStorageKey("password", routeCode));
       }
       setJoined(false);
       setRestoringRoom(false);
@@ -131,6 +140,12 @@ export function App({ mode }: { mode: "home" | "room" }) {
   }, [clearState, mode, routeCode, setState]);
 
   useEffect(() => {
+    if (!account) return;
+    setName(account.name);
+    setAvatar(account.avatar || avatar);
+  }, [account]);
+
+  useEffect(() => {
     if (mode !== "room" || !routeCode) return;
     setRoomId(routeCode);
     setHomeMode("join");
@@ -144,8 +159,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
     setJoined(false);
     setRestoringRoom(
       Boolean(
-        localStorage.getItem(`planning-poker-token:${routeCode}`) ||
-          sessionStorage.getItem(`planning-poker-pending-join:${routeCode}`),
+        localStorage.getItem(roomStorageKey("token", routeCode)) ||
+          sessionStorage.getItem(roomStorageKey("pending-join", routeCode)),
       ),
     );
     fetch(`${API}/rooms/${encodeURIComponent(routeCode)}`)
@@ -193,13 +208,13 @@ export function App({ mode }: { mode: "home" | "room" }) {
     );
 
     let sessionId =
-      localStorage.getItem(`planning-poker-session:${target}`) ?? "";
-    let token = localStorage.getItem(`planning-poker-token:${target}`) ?? "";
+      localStorage.getItem(roomStorageKey("session", target)) ?? "";
+    let token = localStorage.getItem(roomStorageKey("token", target)) ?? "";
 
     if (!token) {
       const response = await fetch(`${API}/rooms/${encodeURIComponent(target)}/join`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...authHeaders(accountToken) },
         body: JSON.stringify({
           name,
           avatar,
@@ -220,17 +235,17 @@ export function App({ mode }: { mode: "home" | "room" }) {
         const session = await response.json();
         sessionId = session.sessionId;
         token = session.token;
-        localStorage.setItem(`planning-poker-session:${target}`, sessionId);
-        localStorage.setItem(`planning-poker-token:${target}`, token);
+        localStorage.setItem(roomStorageKey("session", target), sessionId);
+        localStorage.setItem(roomStorageKey("token", target), token);
       }
     }
 
     sessionStorage.setItem(
-      `planning-poker-pending-join:${target}`,
+      roomStorageKey("pending-join", target),
       JSON.stringify({ password }),
     );
     if (password) {
-      sessionStorage.setItem(`planning-poker-password:${target}`, password);
+      sessionStorage.setItem(roomStorageKey("password", target), password);
     }
 
     if (pendingConnectHandler.current) {
@@ -309,20 +324,36 @@ export function App({ mode }: { mode: "home" | "room" }) {
     if (mode !== "room" || !routeCode || joined) return;
     if (restoreAttemptedFor.current === routeCode) return;
     restoreAttemptedFor.current = routeCode;
-    const token = localStorage.getItem(`planning-poker-token:${routeCode}`);
+    const token = localStorage.getItem(roomStorageKey("token", routeCode));
     const pending = sessionStorage.getItem(
-      `planning-poker-pending-join:${routeCode}`,
+      roomStorageKey("pending-join", routeCode),
     );
     if (!token && !pending) {
+      if (accountToken) {
+        setRestoringRoom(true);
+        void fetch(`${API}/rooms/${encodeURIComponent(routeCode)}/rejoin`, {
+          method: "POST",
+          headers: authHeaders(accountToken),
+        })
+          .then(async (response) => {
+            if (!response.ok) throw new Error("rejoin failed");
+            const session = await response.json();
+            localStorage.setItem(roomStorageKey("session", routeCode), session.sessionId);
+            localStorage.setItem(roomStorageKey("token", routeCode), session.token);
+            await connectRoom(routeCode, "");
+          })
+          .catch(() => setRestoringRoom(false));
+        return;
+      }
       setRestoringRoom(false);
       return;
     }
     const password = pending
       ? JSON.parse(pending).password
-      : sessionStorage.getItem(`planning-poker-password:${routeCode}`) ?? roomPassword;
-    sessionStorage.removeItem(`planning-poker-pending-join:${routeCode}`);
+      : sessionStorage.getItem(roomStorageKey("password", routeCode)) ?? roomPassword;
+    sessionStorage.removeItem(roomStorageKey("pending-join", routeCode));
     void connectRoom(routeCode, password);
-  }, [joined, mode, routeCode, roomPassword]);
+  }, [accountToken, joined, mode, routeCode, roomPassword]);
 
   const submitHome = async (event: FormEvent) => {
     event.preventDefault();
@@ -358,6 +389,30 @@ export function App({ mode }: { mode: "home" | "room" }) {
       createPrivate ? roomPassword : "",
     );
     if (connected) navigate(`/room/${encodeURIComponent(created.code)}`);
+  };
+
+  const submitAccount = async () => {
+    setAccountError("");
+    try {
+      const session =
+        authMode === "register"
+          ? await registerAccount({ email, password: accountPassword, name, avatar })
+          : await loginAccount({ email, password: accountPassword });
+      setAccountSession(session.user, session.token);
+      setName(session.user.name);
+      setAvatar(session.user.avatar || avatar);
+    } catch {
+      setAccountError(authMode === "register" ? "Nao foi possivel cadastrar usuario." : "Login invalido.");
+    }
+  };
+
+  const logout = async () => {
+    if (accountToken) await logoutAccount(accountToken).catch(() => undefined);
+    clearAccountSession();
+    clearState();
+    socket.disconnect();
+    setJoined(false);
+    if (mode === "room") navigate("/");
   };
 
   const cast = () => {
@@ -426,7 +481,119 @@ export function App({ mode }: { mode: "home" | "room" }) {
           </div>
         </section>
 
-        <form className="join-panel" onSubmit={submitHome}>
+        <div className="home-stack">
+          {mode === "home" && (
+            <div className="card-switch" role="tablist" aria-label="Sua conta ou mesa">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={homeCard === "account"}
+                className={homeCard === "account" ? "is-active" : ""}
+                onClick={() => setHomeCard("account")}
+              >
+                Sua conta
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={homeCard === "room"}
+                className={homeCard === "room" ? "is-active" : ""}
+                onClick={() => setHomeCard("room")}
+              >
+                Mesa
+              </button>
+            </div>
+          )}
+
+          {mode === "home" && homeCard === "account" && (
+            <section className="account-card" aria-label="Sua conta">
+              {account ? (
+                <div className="account-row">
+                  <span>{account.email}</span>
+                  <button type="button" onClick={logout}>
+                    Sair
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="mode-switch auth-switch">
+                    <button
+                      type="button"
+                      className={authMode === "login" ? "is-active" : ""}
+                      onClick={() => setAuthMode("login")}
+                    >
+                      Login
+                    </button>
+                    <button
+                      type="button"
+                      className={authMode === "register" ? "is-active" : ""}
+                      onClick={() => setAuthMode("register")}
+                    >
+                      Cadastro
+                    </button>
+                  </div>
+                  <label>
+                    Email
+                    <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
+                  </label>
+                  {authMode === "register" && (
+                    <label>
+                      Nome
+                      <input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        minLength={1}
+                      />
+                    </label>
+                  )}
+                  {authMode === "register" && (
+                    <div className="avatar-pick">
+                      <span>Seu avatar</span>
+                      <div>
+                        {AVATARS.map((item) => (
+                          <button
+                            type="button"
+                            className={avatar === item ? "active" : ""}
+                            onClick={() => setAvatar(item)}
+                            key={item}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <label>
+                    Senha da conta
+                    <div className="password-field">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={accountPassword}
+                        onChange={(e) => setAccountPassword(e.target.value)}
+                        minLength={8}
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle"
+                        aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                        aria-pressed={showPassword}
+                        onClick={() => setShowPassword((current) => !current)}
+                      >
+                        {showPassword ? "🙈" : "👁"}
+                      </button>
+                    </div>
+                  </label>
+                  {accountError && <p className="account-error" role="alert">{accountError}</p>}
+                  <button type="button" className="secondary auth-action" onClick={submitAccount}>
+                    {authMode === "login" ? "Entrar na conta" : "Criar conta"}
+                  </button>
+                </>
+              )}
+            </section>
+          )}
+
+          {mode === "room" || homeCard === "room" ? (
+            <form className="join-panel" onSubmit={submitHome}>
           <div className="brand-mark">♠</div>
 
           {mode === "home" && (
@@ -459,13 +626,14 @@ export function App({ mode }: { mode: "home" | "room" }) {
           </h2>
 
           <label>
-            Nome
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </label>
+          Nome
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            readOnly={Boolean(account)}
+          />
+        </label>
 
           {mode === "room" || homeMode === "join" ? (
             <>
@@ -501,21 +669,30 @@ export function App({ mode }: { mode: "home" | "room" }) {
                 </div>
               </label>
 
-              <div className="avatar-pick">
-                <span>Escolha seu avatar</span>
-                <div>
-                  {AVATARS.map((item) => (
-                    <button
-                      type="button"
-                      className={avatar === item ? "active" : ""}
-                      onClick={() => setAvatar(item)}
-                      key={item}
-                    >
-                      {item}
-                    </button>
-                  ))}
+              {account ? (
+                <div className="avatar-pick">
+                  <span>Seu avatar</span>
+                  <div>
+                    <span className="account-avatar-fixed">{avatar}</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="avatar-pick">
+                  <span>Escolha seu avatar</span>
+                  <div>
+                    {AVATARS.map((item) => (
+                      <button
+                        type="button"
+                        className={avatar === item ? "active" : ""}
+                        onClick={() => setAvatar(item)}
+                        key={item}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -539,7 +716,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
 
               {createPrivate && (
                 <label>
-                  Senha
+                  Senha da sala
                   <div className="password-field">
                     <input
                       type={showPassword ? "text" : "password"}
@@ -583,6 +760,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
               : "Dica: salas privadas pedem uma senha com pelo menos 4 caracteres."}
           </p>
         </form>
+            ) : null}
+        </div>
       </main>
     );
 
@@ -608,7 +787,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
           <button type="button">Chat</button>
           <button type="button">Pessoas</button>
           <Link to="/settings">Configuracoes</Link>
-          <Link to="/rooms">Sair</Link>
+          <button type="button" onClick={logout}>Sair</button>
           <RoomConfiguration
             enabled={state?.config.permiteParticipantesIA ?? false}
             onChange={configureAi}

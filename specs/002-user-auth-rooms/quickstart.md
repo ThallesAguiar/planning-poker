@@ -61,3 +61,5 @@ Add or extend E2E coverage for:
 - room role request approval updates table;
 - room role request rejection keeps previous role;
 - entry/table visual shell remains current style.
+
+Visual shell checks live in `frontend/tests/visual-baseline.spec.ts` and assert existing structural anchors instead of freezing pixel snapshots during auth implementation.
