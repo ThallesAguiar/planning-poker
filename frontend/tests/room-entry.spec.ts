@@ -41,6 +41,27 @@ test("register shows name and avatar fields and creates account", async ({ page 
   await expect(page.getByText(email)).toBeVisible();
 });
 
+test("logs in with registered account and stays on home account card", async ({
+  page,
+  request,
+}) => {
+  const email = `login-${Date.now()}@test.com`;
+  const register = await request.post(`${apiUrl}/auth/register`, {
+    data: { email, password: "senha123", name: "Jogador Login", avatar: "♣" },
+  });
+  expect(register.ok()).toBeTruthy();
+
+  await page.goto(appUrl);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Senha da conta").fill("senha123");
+  await page.getByRole("button", { name: "Entrar na conta" }).click();
+
+  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.getByText("Sair")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Mesa" })).toBeVisible();
+  await expect(page.locator("form.join-panel")).toHaveCount(0);
+});
+
 test("creates private room and opens poker table directly", async ({ page }) => {
   await page.goto(appUrl);
 
