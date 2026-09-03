@@ -42,11 +42,11 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 
 ### Pendente
 
-- [~] Usar shared types diretamente no gateway, sem tipos duplicados locais.
+- [x] Usar shared types diretamente no gateway, sem tipos duplicados locais.
 - [~] Alinhar nomes de campos com prompt: `nome`, `avatarUrl`, `papel`, `valor`.
-- [~] Completar contratos de timer, configuracao, apresentacao, discussao, revote, IA e relatorio.
-- [ ] Adicionar DTOs compartilhados para validacao de payloads.
-- [~] Tipos compartilhados de auth, salas vinculadas, perfil de sala e solicitacao de papel adicionados para `002-user-auth-rooms`; gateway ainda mantem tipos locais.
+- [x] Completar contratos de timer, configuracao, apresentacao, discussao, revote, IA e relatorio.
+- [x] Adicionar DTOs compartilhados para validacao de payloads.
+- [x] Tipos compartilhados de auth, salas vinculadas, perfil de sala e solicitacao de papel adicionados; gateway agora usa os tipos compartilhados.
 
 ## 3. Banco de dados e persistencia
 
@@ -65,7 +65,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Persistir entrada e saida de participantes.
 - [x] Persistir cada rodada e cada voto.
 - [x] Persistir mensagens realtime de chat.
-- [~] Persistir estado atual da rodada e seus timers; deadlines agora sao salvos em `VoteRound`, mas a recuperacao distribuida/atomicidade ainda esta pendente.
+- [x] Persistir estado atual da rodada e seus timers; deadlines salvos em `VoteRound`; `round.service.resumeFromStorage` restaura timer ou transiciona fase expirada.
 - [x] Gerar migration Prisma versionada `0001_realtime_baseline`.
 - [ ] Criar seed com 4 participantes e 1 IA.
 - [ ] Implementar consultas de historico e relatorios anteriores.
@@ -91,7 +91,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [~] CRUD completo de salas, historias e configuracoes.
 - [ ] Fluxo de convite por codigo/link.
 - [~] Autenticacao leve com JWT de conta implementada para registro, login, me e logout em `api/src/auth`; cobertura REST completa ainda pendente.
-- [~] Guardas e autorizacao por papel, principalmente PO.
+- [x] Guardas e autorizacao por papel, principalmente PO, em todos os eventos administrativos com `room:error` padronizado.
 - [~] Endpoints de login, cadastro, logout, `GET /auth/me`, `GET /rooms/mine`, join com conta e rejoin de membro adicionados; E2E completo ainda pendente.
 - [~] Endpoint para listar relatorios e sessoes passadas com sessao JWT; rota de visualizacao implementada, validacao E2E ainda pendente.
 - [~] Exportacao de relatorio em CSV e PDF; rotas e botoes frontend implementados, testes de download/compatibilidade ainda pendentes.
@@ -119,10 +119,10 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [~] Servico `RoomStateService` salva snapshots ativos em Redis com fallback de memoria e gateway restaura snapshot; merge completo com PostgreSQL ainda pendente.
 - [x] Persistir e restaurar participantes, historias, votos e chat via PostgreSQL.
 - [x] Integrar Redis adapter para multiplas instancias.
-- [~] Implementar `room:participantUpdate` dedicado; snapshot ja atualiza participantes.
-- [x] Implementar `room:configure`.
+- [x] Implementar `room:participantUpdate` dedicado com payload de presenca.
+- [x] Implementar `room:configure` com validacao expandida de todos os campos.
 - [x] Implementar `story:present`.
-- [~] Implementar timers de reflexao e discussao no servidor com deadline persistido e servico dedicado; recuperacao distribuida/atomicidade ainda pendente.
+- [x] Implementar `round.service.ts` com transicoes de fase, persistencia e timers; `resumeFromStorage` restaura timers apos reload.
 - [x] Emitir `timer:start`, `timer:tick` e `discussion:start`.
 - [x] Emitir `discussion:end` ao fim do timer.
 - [x] Habilitar revelacao por todos os votos, timeout ou comando autorizado.
@@ -130,11 +130,13 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Implementar `story:finalize` e `story:skip`.
 - [~] Restaurar historico via `room:state`; evento `chat:history` separado ainda pendente.
 - [x] Implementar reacoes.
-- [~] Validar payloads, sala, historia, participante e deck no servidor.
-- [~] Validar autorizacao PO/Scrum Master em eventos administrativos.
+- [x] Validar payloads, sala, historia, participante e deck no servidor com `room:error` padronizado.
+- [x] Validar autorizacao PO/Scrum Master em eventos administrativos com `room:error` visivel.
 - [x] Emitir `report:ready` apos gerar relatorio.
-- [~] `room:join` passou a restaurar participante existente e usar nome/avatar especificos da sala; eventos dedicados de perfil/papel ainda pendentes.
-- [~] Eventos `room:profileUpdate`, `room:roleChangeRequest` e `room:profileDecision` adicionados no gateway; UI e E2E multiusuario ainda pendentes.
+- [x] `room:join` restaura participante existente com deduplicacao de sessao (socket antigo desconectado).
+- [x] Eventos `room:removeParticipant`, `room:setParticipantStatus`, `room:transferOwner` adicionados no gateway; `room:kicked` emitido ao participante removido.
+- [x] Implementar `story:create` via socket para PO.
+- [x] Servico `presence.service.ts` com tracking de sockets, deduplicacao, remocao e transferencia de ownership.
 
 ## 6. Frontend React
 
@@ -187,23 +189,27 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 
 - [x] Home completa para criar ou entrar em sala.
 - [x] Home separada por rota com criacao de sala publica ou privada.
-- [~] Tela de configuracao visual disponivel em `/settings`; integracao completa com permissoes PO e persistencia ainda pendente.
+- [~] Tela de configuracao visual em `/settings` parcial; painel `RoomConfiguration` funcional na mesa (PO, lobby, campos reais).
 - [ ] Selecao real de papel e avatar no ingresso.
 - [ ] Controle visual de permissoes por papel.
-- [~] Renderizar historia atual por `story:present`.
-- [x] Renderizar countdown por `timer:tick` do servidor.
-- [~] Bloquear revelar ate condicao valida.
+- [x] Renderizar historia atual por `story:present` com StoryPanel (adicionar + iniciar rodada).
+- [x] Renderizar countdown por `timer:tick` do servidor com tipo (reflexao/discussao).
+- [x] Bloquear revelar ate condicao valida (votos > 0 + fase votacao).
 - [ ] Animacao completa de carta deslizando e flip simultaneo.
-- [~] Fase de discussao, revote, finalizacao e proxima historia.
+- [x] Fase de discussao, revote, finalizacao e proxima historia com botoes de moderacao PO.
 - [ ] Confete/particulas em consenso.
 - [ ] Reacoes flutuantes sobre a mesa.
 - [ ] Badges/achievements no relatorio.
 - [ ] Sons opcionais com mute.
 - [ ] Estrutura de temas/skins.
 - [ ] Tela dedicada de relatorio com exportacoes.
-- [~] Estados de erro, reconexao, carregamento e sala encerrada.
-- [ ] Teste visual e responsivo em desktop e mobile.
+- [x] Estados de erro (room-error-toast), reconexao (connectionStatus), carregamento e sala encerrada.
+- [x] Teste visual e responsivo em desktop e mobile (Playwright com viewport 390x844).
 - [~] Login/cadastro basico, sessao de conta, `Minhas Salas` via API e rejoin por conta adicionados sem redesenho amplo; testes Playwright especificos ainda pendentes.
+- [x] Painel de participantes com moderacao (remover, afastar/reativar, transferir PO).
+- [x] Status de IA: idle, voting, voted, unavailable, error.
+- [x] Regras reais da sala vindas do backend (deck, tempos, IA, voto anonimo, revelacao automatica).
+- [x] Testes E2E: rodada completa com duas sessoes, presenca/remocao/reconexao, viewport mobile.
 
 ## 7. Participante IA
 
@@ -220,7 +226,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Montar prompt com historia, papel e contexto recente de chat.
 - [x] Validar voto contra deck permitido.
 - [x] Emitir voto e justificativa como participante normal.
-- [~] Tratar timeout, erro e indisponibilidade do provedor; limite de custo por rodada implementado via `LLM_MAX_REQUESTS_PER_ROUND`, com status de erro e fallback manual visíveis.
+- [x] Tratar timeout, erro e indisponibilidade do provedor; limite de custo por rodada implementado via `LLM_MAX_REQUESTS_PER_ROUND`, com status `idle`/`voting`/`voted`/`unavailable`/`error` na UI.
 - [x] Adicionar toggle na configuracao da sala e acao para solicitar voto IA.
 
 ## 8. Relatorio da sprint

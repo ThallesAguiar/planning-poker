@@ -1,13 +1,15 @@
 export declare const ROOM_NAMESPACE: "/room";
 export type RoomStatus = 'aberta' | 'em_andamento' | 'encerrada';
 export type RoomVisibility = 'PUBLIC' | 'PRIVATE';
-export type ParticipantRole = 'PO' | 'Dev' | 'QA' | 'Scrum Master' | 'Observador' | 'IA_Agente';
+export type ParticipantRole = 'PO' | 'Dev' | 'QA' | 'ScrumMaster' | 'Observador' | 'IA_Agente';
+export type ParticipantStatus = 'ativo' | 'inativo';
 export type StoryStatus = 'pendente' | 'em_votacao' | 'em_discussao' | 'estimada' | 'pulada';
-export type VoteValue = number | 'cafÃ©' | '?';
+export type VoteValue = number | 'café' | '?';
 export type TimerType = 'reflexao' | 'discussao';
+export type RoomPhase = 'lobby' | 'votacao' | 'discussao' | 'revelada' | 'finalizada';
 export type ConsensusCriterion = 'unanime' | 'media' | 'mediana' | 'decisao_po';
 export type AuthErrorCode = 'EMAIL_ALREADY_EXISTS' | 'INVALID_CREDENTIALS' | 'UNAUTHENTICATED' | 'INVALID_INPUT';
-export type RoomErrorCode = 'ROOM_NOT_FOUND' | 'PASSWORD_REQUIRED' | 'INVALID_PASSWORD' | 'FORBIDDEN' | 'INVALID_PHASE' | 'INVALID_VOTE' | 'ROOM_FULL' | 'AI_UNAVAILABLE' | 'INVALID_PROFILE_UPDATE' | 'INVALID_ROLE_REQUEST' | 'PROFILE_REQUEST_NOT_FOUND';
+export type RoomErrorCode = 'ROOM_NOT_FOUND' | 'PASSWORD_REQUIRED' | 'INVALID_PASSWORD' | 'FORBIDDEN' | 'INVALID_PHASE' | 'INVALID_VOTE' | 'ROOM_FULL' | 'AI_UNAVAILABLE' | 'INVALID_PROFILE_UPDATE' | 'INVALID_ROLE_REQUEST' | 'PROFILE_REQUEST_NOT_FOUND' | 'REMOVED' | 'NOT_PARTICIPANT' | 'INVALID_CONFIG';
 export declare const ROOM_ERROR_CODES: readonly RoomErrorCode[];
 export type RoomConfig = {
     deckType: 'fibonacci' | 'fibonacci_modificado' | 't_shirt' | 'custom';
@@ -54,6 +56,7 @@ export type Participant = {
     isAI: boolean;
     connected: boolean;
     hasVoted: boolean;
+    status?: ParticipantStatus;
 };
 export type RoomProfileUpdate = {
     name?: string;
@@ -76,6 +79,7 @@ export type Story = {
     order: number;
     status: StoryStatus;
     finalValue?: VoteValue | null;
+    criterion?: string | null;
     rounds: number;
 };
 export type ChatMessage = {
@@ -102,11 +106,22 @@ export type RoomState = {
     participants: Participant[];
     stories: Story[];
     currentStoryId?: string;
-    phase: 'lobby' | 'votacao' | 'discussao' | 'revelada' | 'finalizada';
+    roundId?: string;
+    phase: RoomPhase;
     votes: VoteReveal[];
     remainingSeconds: number | null;
     timerType?: TimerType | null;
     messages: ChatMessage[];
+};
+export type RoomErrorPayload = {
+    code: RoomErrorCode;
+    message: string;
+};
+export type ParticipantUpdateReason = 'joined' | 'left' | 'disconnected' | 'reconnected' | 'removed' | 'status' | 'role' | 'owner';
+export type ParticipantUpdate = {
+    participant: Participant;
+    reason: ParticipantUpdateReason;
+    ownerId?: string;
 };
 export type ReportSummary = {
     id: string;
@@ -154,6 +169,17 @@ export type ClientToServerEvents = {
     'room:transferOwner': (payload: {
         participantId: string;
     }) => void;
+    'room:removeParticipant': (payload: {
+        participantId: string;
+    }) => void;
+    'room:setParticipantStatus': (payload: {
+        participantId: string;
+        status: ParticipantStatus;
+    }) => void;
+    'story:create': (payload: {
+        title: string;
+        description?: string;
+    }) => void;
     'story:present': (payload: {
         storyId: string;
     }) => void;
@@ -180,15 +206,17 @@ export type ClientToServerEvents = {
 };
 export type ServerToClientEvents = {
     'room:state': (state: RoomState) => void;
-    'room:error': (payload: {
-        message: string;
-    }) => void;
-    'room:participantUpdate': (state: RoomState) => void;
+    'room:error': (payload: RoomErrorPayload) => void;
+    'room:participantUpdate': (payload: ParticipantUpdate) => void;
     'room:profileRequestPending': (payload: RoomRoleChangeRequest) => void;
     'room:profileDecision': (payload: {
         requestId: string;
         decision: 'approved' | 'rejected';
         decidedAt: string;
+    }) => void;
+    'room:kicked': (payload: {
+        code?: RoomErrorCode;
+        message?: string;
     }) => void;
     'timer:tick': (payload: {
         type: TimerType;
@@ -227,7 +255,7 @@ export type ServerToClientEvents = {
         url?: string;
     }) => void;
     'ai:status': (payload: {
-        status: 'voted' | 'unavailable' | 'error';
+        status: 'idle' | 'voting' | 'voted' | 'unavailable' | 'error';
         message?: string;
     }) => void;
 };

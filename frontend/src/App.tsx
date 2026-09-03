@@ -1,11 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { socket } from "./lib/socket";
 import { authHeaders, loginAccount, logoutAccount, registerAccount } from "./lib/auth";
 import { useAppStore } from "./stores/app-store";
-import { RoomConfiguration } from "./features/room/RoomConfiguration";
-import { AIParticipant } from "./features/table/AIParticipant";
+import { TableScreen } from "./features/table/TableScreen";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 const ENTRY_CARDS = ["1", "3", "5", "8", "13", "?"];
@@ -39,9 +37,20 @@ export function App({ mode }: { mode: "home" | "room" }) {
   const navigate = useNavigate();
   const { code } = useParams<{ code: string }>();
   const routeCode = mode === "room" ? decodeURIComponent(code ?? "") : "";
-  const { state, setState, clearState, account, accountToken, setAccountSession, clearAccountSession } = useAppStore();
+  const {
+    state,
+    setState,
+    clearState,
+    account,
+    accountToken,
+    setAccountSession,
+    clearAccountSession,
+    setSelfId,
+    setAiStatus,
+    setRoomError,
+  } = useAppStore();
   const sessionScope = account?.id ?? "guest";
-  const roomStorageKey = (kind: "token" | "session" | "pending-join" | "password", target: string) =>
+  const roomStorageKey = (kind: "token" | "session" | "participant" | "pending-join" | "password", target: string) =>
     `planning-poker-${kind}:${sessionScope}:${target}`;
   const [roomId, setRoomId] = useState(routeCode || "planning-demo");
   const [name, setName] = useState(
@@ -66,9 +75,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
   const [email, setEmail] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
   const [accountError, setAccountError] = useState("");
-  const [message, setMessage] = useState("");
-  const [selected, setSelected] = useState<number | string | null>(null);
   const [joined, setJoined] = useState(false);
+  const joinedRef = useRef(false);
   const restoreAttemptedFor = useRef("");
   const pendingConnectHandler = useRef<(() => void) | null>(null);
   const [restoringRoom, setRestoringRoom] = useState(() => {
@@ -78,9 +86,6 @@ export function App({ mode }: { mode: "home" | "room" }) {
         sessionStorage.getItem(roomStorageKey("pending-join", routeCode)),
     );
   });
-  const [aiStatus, setAiStatus] = useState<
-    "idle" | "voted" | "unavailable" | "error"
-  >("idle");
 
   useEffect(() => {
     const update = (next: any) => {
@@ -93,6 +98,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
       }
       setState(next);
       setJoined(true);
+      joinedRef.current = true;
       setRestoringRoom(false);
       if (next?.code) {
         sessionStorage.removeItem(roomStorageKey("pending-join", next.code));
@@ -103,41 +109,69 @@ export function App({ mode }: { mode: "home" | "room" }) {
       if (current)
         setState({ ...current, remainingSeconds: next.remainingSeconds });
     };
-    socket.on("room:state", update);
-    const error = (next: { message: string }) => {
-      setJoinError(
-        next.message === "PASSWORD_REQUIRED"
-          ? "Esta sala exige senha."
-          : next.message === "ROOM_NOT_FOUND"
-            ? "Sala nao encontrada."
-            : "Senha invalida ou sala indisponivel.",
-      );
-      if (routeCode) {
-        localStorage.removeItem(roomStorageKey("token", routeCode));
-        localStorage.removeItem(roomStorageKey("session", routeCode));
-        sessionStorage.removeItem(roomStorageKey("pending-join", routeCode));
-        sessionStorage.removeItem(roomStorageKey("password", routeCode));
+    const error = (next: { code?: string; message?: string }) => {
+      const code = next.code ?? "ROOM_ERROR";
+      const message = next.message ?? "Erro na sala.";
+      useAppStore.getState().setRoomError({ code, message });
+      if (!joinedRef.current) {
+        setJoinError(message);
+        if (routeCode) {
+          localStorage.removeItem(roomStorageKey("token", routeCode));
+          localStorage.removeItem(roomStorageKey("session", routeCode));
+          localStorage.removeItem(roomStorageKey("participant", routeCode));
+          sessionStorage.removeItem(roomStorageKey("pending-join", routeCode));
+          sessionStorage.removeItem(roomStorageKey("password", routeCode));
+        }
+        setJoined(false);
+        setRestoringRoom(false);
+        socket.disconnect();
       }
-      setJoined(false);
-      setRestoringRoom(false);
-      socket.disconnect();
     };
+    const kicked = (payload: { message?: string }) => {
+      useAppStore.getState().setRoomError({ code: "REMOVED", message: payload.message ?? "Voce foi removido desta sala." });
+      localStorage.removeItem(roomStorageKey("token", routeCode));
+      localStorage.removeItem(roomStorageKey("session", routeCode));
+      localStorage.removeItem(roomStorageKey("participant", routeCode));
+      sessionStorage.removeItem(roomStorageKey("pending-join", routeCode));
+      sessionStorage.removeItem(roomStorageKey("password", routeCode));
+      clearState();
+      setJoined(false);
+      joinedRef.current = false;
+      socket.disconnect();
+      if (mode === "room") navigate("/");
+    };
+    const participantUpdate = (payload: any) => {
+      useAppStore.getState().patchParticipant(payload.participant);
+    };
+    const ai = (next: { status: "voted" | "unavailable" | "error" | "idle" | "voting" }) =>
+      useAppStore.getState().setAiStatus(next.status);
+    const reportReady = (payload: { reportId: string }) => {
+      if (mode === "room") navigate(`/report/${payload.reportId}`);
+    };
+
+    socket.on("room:state", update);
     socket.on("room:error", error);
+    socket.on("room:kicked", kicked);
+    socket.on("room:participantUpdate", participantUpdate);
     socket.on("timer:tick", tick);
-    const ai = (next: { status: "voted" | "unavailable" | "error" }) =>
-      setAiStatus(next.status);
     socket.on("ai:status", ai);
-    socket.on("connect", () => useAppStore.getState().setSocketConnected(true));
-    socket.on("disconnect", () =>
-      useAppStore.getState().setSocketConnected(false),
-    );
+    socket.on("report:ready", reportReady);
+    socket.on("connect", () => {
+      joinedRef.current = true;
+      useAppStore.getState().setConnectionStatus("connected");
+    });
+    socket.on("disconnect", () => useAppStore.getState().setConnectionStatus("disconnected"));
+    socket.on("reconnecting" as never, () => useAppStore.getState().setConnectionStatus("reconnecting"));
     return () => {
       socket.off("room:state", update);
       socket.off("room:error", error);
+      socket.off("room:kicked", kicked);
+      socket.off("room:participantUpdate", participantUpdate);
       socket.off("timer:tick", tick);
       socket.off("ai:status", ai);
+      socket.off("report:ready", reportReady);
     };
-  }, [clearState, mode, routeCode, setState]);
+  }, [clearState, mode, routeCode, setState, setAiStatus]);
 
   useEffect(() => {
     if (!account) return;
@@ -152,11 +186,15 @@ export function App({ mode }: { mode: "home" | "room" }) {
     const currentState = useAppStore.getState().state;
     if (currentState && isSameRoom(currentState.code, currentState.roomId, routeCode)) {
       setJoined(true);
+      joinedRef.current = true;
       setRestoringRoom(false);
       return;
     }
     clearState();
     setJoined(false);
+    joinedRef.current = false;
+    const storedPid = localStorage.getItem(roomStorageKey("participant", routeCode));
+    if (storedPid) setSelfId(storedPid);
     setRestoringRoom(
       Boolean(
         localStorage.getItem(roomStorageKey("token", routeCode)) ||
@@ -167,39 +205,13 @@ export function App({ mode }: { mode: "home" | "room" }) {
       .then((response) => (response.ok ? response.json() : null))
       .then((room) => setRoomIsPrivate(room?.visibility === "PRIVATE"))
       .catch(() => setRoomIsPrivate(false));
-  }, [clearState, mode, routeCode]);
-
-  const current =
-    state?.stories.find((story) => story.id === state.currentStoryId) ??
-    state?.stories[0];
-  const deck = state?.config.deckValues ?? [
-    1,
-    2,
-    3,
-    5,
-    8,
-    13,
-    20,
-    40,
-    100,
-    "cafe",
-    "?",
-  ];
-  const progress = state
-    ? Math.round(
-        (state.votes.length /
-          Math.max(
-            1,
-            state.participants.filter((p) => p.role !== "Observador").length,
-          )) *
-          100,
-      )
-    : 0;
+  }, [clearState, mode, routeCode, setSelfId]);
 
   const connectRoom = async (target: string, password = roomPassword) => {
     setJoinError("");
     if (!target) return false;
     setJoined(false);
+    joinedRef.current = false;
     setRestoringRoom(true);
 
     sessionStorage.setItem(
@@ -210,6 +222,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
     let sessionId =
       localStorage.getItem(roomStorageKey("session", target)) ?? "";
     let token = localStorage.getItem(roomStorageKey("token", target)) ?? "";
+    let participantId = localStorage.getItem(roomStorageKey("participant", target)) ?? "";
 
     if (!token) {
       const response = await fetch(`${API}/rooms/${encodeURIComponent(target)}/join`, {
@@ -235,9 +248,16 @@ export function App({ mode }: { mode: "home" | "room" }) {
         const session = await response.json();
         sessionId = session.sessionId;
         token = session.token;
+        participantId = session.participantId ?? "";
         localStorage.setItem(roomStorageKey("session", target), sessionId);
         localStorage.setItem(roomStorageKey("token", target), token);
+        if (participantId) {
+          localStorage.setItem(roomStorageKey("participant", target), participantId);
+          setSelfId(participantId);
+        }
       }
+    } else if (participantId) {
+      setSelfId(participantId);
     }
 
     sessionStorage.setItem(
@@ -247,6 +267,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
     if (password) {
       sessionStorage.setItem(roomStorageKey("password", target), password);
     }
+    setRoomError(null);
 
     if (pendingConnectHandler.current) {
       socket.off("connect", pendingConnectHandler.current);
@@ -271,7 +292,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
         cleanup();
         resolve(reason);
       };
-      const failBySocketError = () => fail("socket-error");
+      const failBySocketError = (payload: { code?: string }) => {
+        if (payload?.code === "FORBIDDEN" || payload?.code === "REMOVED") setJoinError("Voce nao pode entrar nesta sala.");
+        fail("socket-error");
+      };
       const timer = window.setTimeout(() => fail("timeout"), 6000);
       socket.on("room:state", confirm);
       socket.once("room:error", failBySocketError);
@@ -304,6 +328,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
     if (!confirmed) {
       setRestoringRoom(false);
       setJoined(false);
+      joinedRef.current = false;
       if (confirmationResult === "timeout") {
         setJoinError("Nao foi possivel entrar na sala.");
       }
@@ -340,6 +365,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
             const session = await response.json();
             localStorage.setItem(roomStorageKey("session", routeCode), session.sessionId);
             localStorage.setItem(roomStorageKey("token", routeCode), session.token);
+            if (session.participantId) {
+              localStorage.setItem(roomStorageKey("participant", routeCode), session.participantId);
+              setSelfId(session.participantId);
+            }
             await connectRoom(routeCode, "");
           })
           .catch(() => setRestoringRoom(false));
@@ -348,12 +377,14 @@ export function App({ mode }: { mode: "home" | "room" }) {
       setRestoringRoom(false);
       return;
     }
+    const participantId = localStorage.getItem(roomStorageKey("participant", routeCode));
+    if (participantId) setSelfId(participantId);
     const password = pending
       ? JSON.parse(pending).password
       : sessionStorage.getItem(roomStorageKey("password", routeCode)) ?? roomPassword;
     sessionStorage.removeItem(roomStorageKey("pending-join", routeCode));
     void connectRoom(routeCode, password);
-  }, [accountToken, joined, mode, routeCode, roomPassword]);
+  }, [accountToken, joined, mode, routeCode, roomPassword, setSelfId]);
 
   const submitHome = async (event: FormEvent) => {
     event.preventDefault();
@@ -412,34 +443,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
     clearState();
     socket.disconnect();
     setJoined(false);
+    joinedRef.current = false;
     if (mode === "room") navigate("/");
-  };
-
-  const cast = () => {
-    if (selected !== null)
-      socket.emit("vote:cast", {
-        storyId: current?.id ?? "",
-        value: selected as any,
-      });
-  };
-
-  const sendMessage = (event: FormEvent) => {
-    event.preventDefault();
-    if (!message.trim()) return;
-    socket.emit("chat:message", { text: message });
-    setMessage("");
-  };
-
-  const configureAi = (enabled: boolean) => {
-    setAiStatus("idle");
-    socket.emit("room:configure", {
-      config: { permiteParticipantesIA: enabled },
-    });
-  };
-
-  const requestAiVote = () => {
-    setAiStatus("idle");
-    socket.emit("ai:requestVote");
   };
 
   const hasConfirmedRoom =
@@ -765,221 +770,5 @@ export function App({ mode }: { mode: "home" | "room" }) {
       </main>
     );
 
-  return (
-    <main className="app-shell">
-      <header className="topbar">
-        <div className="wordmark">
-          <span>♠</span> planning poker
-        </div>
-        <div className="session-title">
-          <small>SESSAO AO VIVO</small>
-          <strong>{state?.name ?? "Sprint 24 - Time A"}</strong>
-        </div>
-        <div className="phase-pill">
-          <small>Fase: {state?.phase === "revelada" ? "Revelacao" : "Votacao"}</small>
-          <strong>
-            {state?.remainingSeconds
-              ? `${Math.floor(state.remainingSeconds / 60)}:${String(state.remainingSeconds % 60).padStart(2, "0")}`
-              : "00:45"}
-          </strong>
-        </div>
-        <div className="top-actions">
-          <button type="button">Chat</button>
-          <button type="button">Pessoas</button>
-          <Link to="/settings">Configuracoes</Link>
-          <button type="button" onClick={logout}>Sair</button>
-          <RoomConfiguration
-            enabled={state?.config.permiteParticipantesIA ?? false}
-            onChange={configureAi}
-          />
-          <div className="user-avatar">{avatar}</div>
-        </div>
-      </header>
-
-      <div className="workspace">
-        <aside className="sidebar left">
-          <div className="side-heading">
-            <span>Sua mesa</span>
-            <b>{state?.code ?? roomId}</b>
-          </div>
-          <div className="people">
-            <h3>
-              Participantes <small>{state?.participants.length ?? 0}</small>
-            </h3>
-            {state?.participants.map((person) => (
-              <div className="person" key={person.id}>
-                <span className="person-avatar">{person.avatar}</span>
-                <span>
-                  <b>{person.name}</b>
-                  <small>
-                    {person.role}
-                    {person.id === socket.id ? " · Voce" : ""}
-                  </small>
-                </span>
-                <i className={person.connected ? "online" : ""} />
-              </div>
-            ))}
-          </div>
-          <div className="rules">
-            <h3>Regras da sala</h3>
-            <p>
-              <b>Fibonacci</b>
-              <br />
-              Voto anonimo ate revelar
-              <br />
-              Reflexao: 2 minutos
-            </p>
-          </div>
-          <button
-            className="report-link"
-            onClick={() =>
-              fetch(`${API}/rooms/${roomId}/report`, { method: "POST" })
-            }
-          >
-            ▣ Gerar relatorio
-          </button>
-        </aside>
-
-        <section className="table-area">
-          <div className="story-header">
-            <div>
-              <small>HISTORIA ATUAL</small>
-              <h2>{current?.title ?? "Aguardando proxima historia"}</h2>
-              <p>
-                {current?.description ??
-                  "O PO pode iniciar uma historia para comecar a rodada."}
-              </p>
-            </div>
-            <div className="timer">
-              <small>TEMPO DE REFLEXAO</small>
-              <strong>
-                {state?.remainingSeconds
-                  ? `${Math.floor(state.remainingSeconds / 60)}:${String(state.remainingSeconds % 60).padStart(2, "0")}`
-                  : "02:00"}
-              </strong>
-            </div>
-          </div>
-
-          <div className="felt">
-            <div className="felt-ring" />
-            <div className="table-label">
-              <span>RODADA DE VOTACAO</span>
-              <strong>
-                {state?.phase === "revelada"
-                  ? "Cartas reveladas"
-                  : "Escolha sua carta"}
-              </strong>
-            </div>
-            <div className="players-around">
-              {state?.participants.slice(0, 6).map((person, index) => (
-                <motion.div
-                  className={`seat seat-${index}`}
-                  animate={{ y: person.hasVoted ? -8 : 0 }}
-                  key={person.id}
-                >
-                  <span className="seat-avatar">{person.avatar}</span>
-                  <small>{person.name}</small>
-                  {person.hasVoted && <span className="face-down">?</span>}
-                </motion.div>
-              ))}
-            </div>
-            <div className="progress">
-              <div>
-                <span>
-                  {state?.votes.length ?? 0} de{" "}
-                  {state?.participants.length ?? 0} jogaram
-                </span>
-                <b>{progress}%</b>
-              </div>
-              <div className="progress-track">
-                <motion.i animate={{ width: `${progress}%` }} />
-              </div>
-            </div>
-            <div className="table-actions">
-              <button
-                className="secondary"
-                onClick={() => socket.emit("vote:forceReveal")}
-              >
-                Revelar cartas
-              </button>
-              <button
-                className="primary"
-                onClick={cast}
-                disabled={selected === null}
-              >
-                Jogar carta <span>↑</span>
-              </button>
-              <AIParticipant
-                enabled={state?.config.permiteParticipantesIA ?? false}
-                status={aiStatus}
-                onRequest={requestAiVote}
-              />
-            </div>
-          </div>
-
-          <div className="hand">
-            <div className="hand-title">
-              <span>Sua mao</span>
-              <small>
-                {selected === null
-                  ? "Selecione uma carta"
-                  : `Carta ${selected} selecionada`}
-              </small>
-            </div>
-            <div className="cards">
-              {deck.map((value) => (
-                <motion.button
-                  whileHover={{ y: -10 }}
-                  whileTap={{ scale: 0.94 }}
-                  className={selected === value ? "card selected" : "card"}
-                  onClick={() => setSelected(value)}
-                  key={String(value)}
-                >
-                  {value === "cafe" ? "☕" : value}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <aside className="sidebar chat">
-          <div className="chat-heading">
-            <h3>Chat da mesa</h3>
-            <span>● ao vivo</span>
-          </div>
-          <div className="messages">
-            <AnimatePresence initial={false}>
-              {state?.messages.map((item) => (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`message ${item.type}`}
-                  key={item.id}
-                >
-                  <b>{item.author}</b>
-                  <small>{item.role}</small>
-                  <p>{item.text}</p>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-            {!state?.messages.length && (
-              <div className="empty-chat">
-                As justificativas aparecem aqui.
-                <br />
-                Que comece a conversa.
-              </div>
-            )}
-          </div>
-          <form className="chat-input" onSubmit={sendMessage}>
-            <input
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Escreva uma mensagem..."
-            />
-            <button title="Enviar">↑</button>
-          </form>
-        </aside>
-      </div>
-    </main>
-  );
+  return <TableScreen onLogout={logout} />;
 }

@@ -1,15 +1,28 @@
 import { create } from 'zustand';
-import type { RoomState } from '../../../packages/shared-types/src/index';
+import type { RoomState } from '@planning-poker/shared-types';
 import type { AccountRoom, AuthUser } from '../lib/auth';
+
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
+export type AiStatus = 'idle' | 'voting' | 'voted' | 'unavailable' | 'error';
+export type RoomError = { code: string; message: string } | null;
 
 type AppState = {
   isSocketConnected: boolean;
+  connectionStatus: ConnectionStatus;
   state: RoomState | null;
+  selfId: string;
+  aiStatus: AiStatus;
+  roomError: RoomError;
   account: AuthUser | null;
   accountToken: string;
   accountRooms: AccountRoom[];
   setState: (state: RoomState) => void;
+  patchParticipant: (participant: RoomState['participants'][number]) => void;
   clearState: () => void;
+  setConnectionStatus: (connectionStatus: ConnectionStatus) => void;
+  setSelfId: (selfId: string) => void;
+  setAiStatus: (aiStatus: AiStatus) => void;
+  setRoomError: (roomError: RoomError) => void;
   setAccountSession: (account: AuthUser, token: string) => void;
   clearAccountSession: () => void;
   setAccountRooms: (rooms: AccountRoom[]) => void;
@@ -26,12 +39,30 @@ const storedAccount = () => {
 
 export const useAppStore = create<AppState>((set) => ({
   isSocketConnected: false,
+  connectionStatus: 'disconnected',
   state: null,
+  selfId: '',
+  aiStatus: 'idle',
+  roomError: null,
   account: storedAccount(),
   accountToken: localStorage.getItem('planning-poker-account-token') ?? '',
   accountRooms: [],
   setState: (state) => set({ state }),
+  patchParticipant: (participant) =>
+    set(({ state }) => {
+      if (!state) return { state };
+      const present = state.participants.some((item) => item.id === participant.id);
+      return {
+        state: present
+          ? { ...state, participants: state.participants.map((item) => (item.id === participant.id ? { ...item, ...participant } : item)) }
+          : { ...state, participants: [...state.participants, participant] },
+      };
+    }),
   clearState: () => set({ state: null }),
+  setConnectionStatus: (connectionStatus) => set({ connectionStatus, isSocketConnected: connectionStatus === 'connected' }),
+  setSelfId: (selfId) => set({ selfId }),
+  setAiStatus: (aiStatus) => set({ aiStatus }),
+  setRoomError: (roomError) => set({ roomError }),
   setAccountSession: (account, token) => {
     localStorage.setItem('planning-poker-account', JSON.stringify(account));
     localStorage.setItem('planning-poker-account-token', token);

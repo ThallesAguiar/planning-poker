@@ -1,10 +1,11 @@
 FROM node:22-alpine AS build
 WORKDIR /app
-COPY package*.json ./
+COPY api/package*.json ./
+COPY packages/shared-types /packages/shared-types
 RUN npm install --legacy-peer-deps --no-audit --no-fund
-COPY prisma ./prisma
+COPY api/prisma ./prisma
 RUN npx prisma generate
-COPY . .
+COPY api/ .
 RUN npm run build
 FROM node:22-alpine
 WORKDIR /app

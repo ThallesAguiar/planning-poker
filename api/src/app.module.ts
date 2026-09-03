@@ -18,6 +18,8 @@ import { PdfExportService } from './reports/pdf-export.service.js';
 import { LlmClient } from './ai/llm.client.js';
 import { AiParticipantService } from './ai/ai-participant.service.js';
 import { RoomStateService } from './realtime/room-state.service.js';
+import { RoundService } from './realtime/round.service.js';
+import { PresenceService } from './realtime/presence.service.js';
 import { CorrelationLogger } from './realtime/logger.service.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -33,6 +35,6 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     }),
   ],
   controllers: [AppController, AuthController, RoomController, ReportController],
-  providers: [AppService, PrismaService, AuthService, RoomService, RoomGateway, AuthorizationService, SessionService, TimerService, ReportService, AchievementsService, PdfExportService, LlmClient, AiParticipantService, RoomStateService, CorrelationLogger],
+  providers: [AppService, PrismaService, AuthService, RoomService, RoomGateway, AuthorizationService, SessionService, TimerService, ReportService, AchievementsService, PdfExportService, LlmClient, AiParticipantService, RoomStateService, RoundService, PresenceService, CorrelationLogger],
 })
 export class AppModule {}

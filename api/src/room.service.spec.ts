@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import bcrypt from 'bcrypt';
 import { RoomService } from './room.service.js';
 import { SessionService } from './auth/session.service.js';
 
