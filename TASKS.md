@@ -350,6 +350,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Feature `002-user-auth-rooms`: `npx prisma validate`, `npx prisma generate`, `api npm run build`, testes unitarios de auth/session e `frontend npm run build` executados apos foundation de autenticacao e salas salvas.
 - [x] Feature `002-user-auth-rooms`: `api npm test` completo aprovado com 13 arquivos e 24 testes; `frontend npm run lint` e `docker compose config --quiet` aprovados.
 - [~] Feature `002-user-auth-rooms`: tasks T001-T018, T022-T030, T035-T042, T047-T052, T065-T069 e T071-T072 marcadas em `specs/002-user-auth-rooms/tasks.md`; testes REST/E2E de US1/US2, UI de US3 e visual/E2E de US4 ainda pendentes.
+- [~] Docker: `docker compose config --quiet` aprovado e API revalidada em `http://localhost:3333/health` apos mover a porta publicada da API de `localhost:3000` para `localhost:3333` e alinhar `VITE_API_URL`; `docker compose up --build -d` completo segue bloqueado por erros TypeScript preexistentes no build do frontend containerizado (`src/features/table/*.tsx`, `src/lib/socket.ts`, `src/stores/app-store.ts`).
 
 ### Pendente
 

@@ -28,7 +28,7 @@ services:
       LLM_MODEL: ${LLM_MODEL:-openai/gpt-4o-mini}
       LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-10000}
       LLM_MAX_REQUESTS_PER_ROUND: ${LLM_MAX_REQUESTS_PER_ROUND:-1}
-    ports: ['3000:3000']
+    ports: ['3333:3000']
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -37,7 +37,7 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3333}
     env_file:
       - .env
     ports: ['5173:80']

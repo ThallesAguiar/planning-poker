@@ -43,7 +43,7 @@ docker compose up --build
 
 Serviços:
 
-- API: `http://localhost:3000`
+- API: `http://localhost:3333`
 - PostgreSQL: `localhost:5432`
 - Redis: `localhost:6380`
 - Frontend containerizado: `http://localhost:5173`
