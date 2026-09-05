@@ -28,7 +28,7 @@ export class RoundService {
   toPublicState(state: InternalRoomState): RoomState {
     const masked = state.phase === 'votacao' || state.phase === 'lobby';
     const votes: InternalVote[] = masked
-      ? state.votes.map((vote) => ({ ...vote, value: '?' as VoteValue }))
+      ? state.votes.map((vote) => ({ ...vote, value: '?' as VoteValue, justification: undefined }))
       : state.votes.map((vote) =>
           state.config.votoAnonimo ? { ...vote, participantName: 'Participante' } : vote,
         );
@@ -100,18 +100,19 @@ export class RoundService {
     return {};
   }
 
-  async castVote(state: InternalRoomState, participant: InternalParticipant | null, storyId: string, value: VoteValue): Promise<ActionResult> {
+  async castVote(state: InternalRoomState, participant: InternalParticipant | null, storyId: string, value: VoteValue, justification?: string): Promise<ActionResult> {
     if (!participant) return { error: 'NOT_PARTICIPANT' };
     if (participant.role === 'Observador') return { error: 'FORBIDDEN' };
     if (state.phase !== 'votacao' || !state.roundId) return { error: 'INVALID_PHASE' };
     if (state.currentStoryId !== storyId) return { error: 'INVALID_VOTE' };
     if (!state.config.deckValues.includes(value)) return { error: 'INVALID_VOTE' };
+    const note = justification?.trim() || null;
     await this.prisma.vote.upsert({
       where: { voteRoundId_participantId: { voteRoundId: state.roundId, participantId: participant.id } },
-      update: { value: String(value), castAt: new Date() },
-      create: { voteRoundId: state.roundId, participantId: participant.id, value: String(value) },
+      update: { value: String(value), castAt: new Date(), justification: note },
+      create: { voteRoundId: state.roundId, participantId: participant.id, value: String(value), justification: note },
     });
-    state.votes = [...state.votes.filter((vote) => vote.participantId !== participant.id), { participantId: participant.id, participantName: participant.name, value }];
+    state.votes = [...state.votes.filter((vote) => vote.participantId !== participant.id), { participantId: participant.id, participantName: participant.name, value, justification: note }];
     participant.hasVoted = true;
     const counts = this.votingCounts(state);
     this.emitter.to(state.roomId, 'vote:progress', { voted: counts.voted, total: counts.total });

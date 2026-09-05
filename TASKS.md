@@ -239,6 +239,13 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Modelo `SprintReport` criado.
 - [x] Endpoint basico de geracao de relatorio.
 - [x] Registro basico de relatorio testado via REST.
+- [x] Votos por rodada com nomes e justificativas opcionais (`voteDetails` por rodada; `Vote.justification` no schema + migration `20260905_vote_justification`).
+- [x] Sintese e ideias de tasks por historia (`insights`) em modo hibrido: `LlmClient.summarize` via `InsightsService` com fallback deterministico por heurísticas (divergencia -> criterios de aceite; 2+ rodadas -> documentar divergencia; tempo alto -> quebrar historia; pulada -> revisar).
+- [x] Secoes configuraveis na geracao (`ReportOptions`: `withChat`, `withVotes`, `withRoomNotes`, `withInsights`) aceitas no REST `POST /rooms/:id/report` e no WS `report:generate`; painel de toggles no frontend.
+- [x] "Anotacoes da mesa" (`roomNotes`): mensagens fora de historia (`storyId: null`) entram no relatorio e no CSV.
+- [x] Ordem deterministica de rodadas (`voteRounds` por `number` asc, `votes` por `castAt`) para `divergenceInitial`/`divergenceFinal` corretos.
+- [x] Fix: `generate()` agora **substitui** o relatorio anterior (deleta o existente e cria novo) em vez de retornar JSON cacheado, entao um relatorio antigo (de build antigo, sem `voteDetails`/`insights`) nunca bloqueia dados frescos.
+- [x] Fix exportacao: o token de sala fica em `planning-poker-token:{accountId|guest}:{roomCode}`; `downloadCsv/Pdf` procuravam por `report.roomId` (UUID do banco) e o token nunca era encontrado -> 401/403. Agora resolvem a chave por `summary.roomCode` no escopo da conta (fallback para outros escopos, ex.: entrou como convidado e logou depois). Coberto por E2E: `Baixar CSV` via botao da pagina."
 
 ### Pendente
 
@@ -370,6 +377,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Testes de exportacao PDF/CSV (E2E `report.spec.ts`).
 - [~] Testes unitarios de timeout, saida invalida, chave ausente e limite de custo adicionados; testes de integracao/fallback humano pendentes.
 - [x] Testes unitarios de deadline, substituicao e cancelamento do timer em `api/src/realtime/timer.service.spec.ts`.
+- [x] Relatorio como documentacao: justificativa opcional no voto (masked em votacao/lobby), votos por rodada com nomes, sintese + tarefas sugeridas em modo hibrido com fallback heuristico, anotacoes da mesa e geracao com secoes configuráveis; 61 testes API, 21 E2E, frontend build/lint aprovados, container API rebuildado (`planning-pocker`) com `dist` novo.
 
 ## Ordem recomendada
 

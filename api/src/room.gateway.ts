@@ -11,10 +11,11 @@ import { RoomStateService } from './realtime/room-state.service.js';
 import { RoundService } from './realtime/round.service.js';
 import { PresenceService } from './realtime/presence.service.js';
 import { RoomService } from './room.service.js';
+import { ReportService } from './reports/report.service.js';
 import { defaultConfig } from './realtime/room.types.js';
 import type { InternalRoomState } from './realtime/room.types.js';
 import type { PresenceChange } from './realtime/presence.service.js';
-import type { RoomConfig, ParticipantRole, ChatMessage, VoteValue, RoomErrorCode, RoomRoleChangeRequest } from '@planning-poker/shared-types';
+import type { RoomConfig, ParticipantRole, ChatMessage, VoteValue, RoomErrorCode, RoomRoleChangeRequest, ReportOptions } from '@planning-poker/shared-types';
 
 type Client = Socket;
 
@@ -53,6 +54,7 @@ export class RoomGateway {
     private readonly round: RoundService,
     private readonly presence: PresenceService,
     private readonly rooms: RoomService,
+    private readonly reports: ReportService,
   ) {}
 
   async afterInit(server: Server) {
@@ -393,14 +395,14 @@ export class RoomGateway {
   }
 
   @SubscribeMessage('vote:cast')
-  async vote(@ConnectedSocket() client: Client, @MessageBody() payload: { storyId: string; value: VoteValue }) {
+  async vote(@ConnectedSocket() client: Client, @MessageBody() payload: { storyId: string; value: VoteValue; justification?: string }) {
     const state = this.stateFor(client);
     const participant = state?.participants.find((item) => item.id === this.participantId(client)) ?? null;
     if (!state) {
       this.emitError(client, 'NOT_PARTICIPANT');
       return;
     }
-    const result = await this.round.castVote(state, participant, payload.storyId, payload.value);
+    const result = await this.round.castVote(state, participant, payload.storyId, payload.value, payload.justification);
     if (result.error) this.emitError(client, result.error);
   }
 
@@ -496,13 +498,13 @@ export class RoomGateway {
     if (state && ['👍', '🤔', '😅', '🔥'].includes(payload.value)) this.server.to(state.roomId).emit('reaction:show', { value: payload.value, participantId: this.participantId(client) });
   }
 
-  @SubscribeMessage('report:generate') async report(@ConnectedSocket() client: Client) {
+  @SubscribeMessage('report:generate') async report(@ConnectedSocket() client: Client, @MessageBody() payload?: { sections?: ReportOptions }) {
     const state = this.authorized(client, 'PO');
     if (!state) {
       this.emitError(client, 'FORBIDDEN');
       return;
     }
-    const report = await this.prisma.sprintReport.create({ data: { roomId: state.dbRoomId, summary: state.stories } });
+    const report = await this.reports.generate(state.dbRoomId, payload?.sections);
     this.server.to(state.roomId).emit('report:ready', { reportId: report.id });
   }
 

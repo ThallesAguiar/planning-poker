@@ -1,12 +1,13 @@
-import { Controller, Get, Param, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ReportService } from './report.service.js';
+import type { ReportOptions } from '@planning-poker/shared-types';
 
 @Controller()
 export class ReportController {
   constructor(private readonly reports: ReportService) {}
 
-  @Post('rooms/:id/report') generate(@Param('id') roomId: string) { return this.reports.generate(roomId); }
+  @Post('rooms/:id/report') generate(@Param('id') roomId: string, @Body() options?: ReportOptions) { return this.reports.generate(roomId, options); }
 
   @Get('rooms/:id/reports') list(@Param('id') roomId: string, @Req() request: Request) {
     return this.reports.listForRoom(roomId, this.token(request));

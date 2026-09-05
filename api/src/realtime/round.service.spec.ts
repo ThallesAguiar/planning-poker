@@ -95,11 +95,43 @@ describe('RoundService', () => {
     const result = await round.castVote(state, state.participants[1], 's1', 5);
     expect(result.error).toBeUndefined();
     expect(state.participants[1].hasVoted).toBe(true);
-    expect(state.votes).toEqual([{ participantId: 'p2', participantName: 'Bia', value: 5 }]);
+    expect(state.votes).toEqual([{ participantId: 'p2', participantName: 'Bia', value: 5, justification: null }]);
     const progress = cap.events.find((e) => e.event === 'vote:progress');
     expect(progress.payload).toEqual({ voted: 1, total: 2 });
     expect(round.toPublicState(state).votes[0].value).toBe('?');
+    expect(round.toPublicState(state).votes[0].justification).toBeUndefined();
     expect(prisma.vote.upsert).toHaveBeenCalled();
+  });
+
+  it('castVote persists the justification and reveals it after reveal', async () => {
+    const prisma = prismaMock();
+    const round = new RoundService(prisma as any, new TimerService());
+    const cap = capture();
+    round.setEmitter(cap.emitter);
+    const state = makeState();
+    await round.present(state, 's1');
+    const result = await round.castVote(state, state.participants[1], 's1', 5, '  simples de implementar  ');
+    expect(result.error).toBeUndefined();
+    expect(state.votes[0]).toMatchObject({ participantId: 'p2', value: 5, justification: 'simples de implementar' });
+    expect(prisma.vote.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ justification: 'simples de implementar' }),
+      update: expect.objectContaining({ justification: 'simples de implementar' }),
+    }));
+    expect(state.votes[0].justification).toBe('simples de implementar');
+  });
+
+  it('casts an empty justification as null and masks it during votacao', async () => {
+    const prisma = prismaMock();
+    const round = new RoundService(prisma as any, new TimerService());
+    const cap = capture();
+    round.setEmitter(cap.emitter);
+    const state = makeState();
+    await round.present(state, 's1');
+    await round.castVote(state, state.participants[1], 's1', 8, '   ');
+    expect(state.votes[0].justification).toBeNull();
+    const publicState = round.toPublicState(state);
+    expect(publicState.votes[0].value).toBe('?');
+    expect((publicState.votes[0] as any).justification).toBeUndefined();
   });
 
   it('rejects voting for observers, wrong phase, unknown story and invalid value', async () => {

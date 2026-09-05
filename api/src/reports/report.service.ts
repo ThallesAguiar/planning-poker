@@ -2,8 +2,10 @@ import { ForbiddenException, Injectable, NotFoundException, UnauthorizedExceptio
 import { PrismaService } from '../prisma.service.js';
 import { AuthorizationService } from '../auth/authorization.service.js';
 import { SessionService } from '../auth/session.service.js';
-import { AchievementsService } from './achievements.service.js';
+import { AchievementsService, BADGE_LABELS } from './achievements.service.js';
 import { PdfExportService } from './pdf-export.service.js';
+import { InsightsService } from './insights.service.js';
+import type { ReportOptions } from '@planning-poker/shared-types';
 
 type ReportAccess = { participantId: string; role: string };
 
@@ -15,16 +17,23 @@ export class ReportService {
     private readonly sessions: SessionService,
     private readonly achievements: AchievementsService,
     private readonly pdf: PdfExportService,
+    private readonly insights: InsightsService,
   ) {}
 
-  async generate(roomIdOrCode: string) {
+  async generate(roomIdOrCode: string, options?: ReportOptions) {
     const include = this.reportInclude();
     const byId = await this.prisma.room.findUnique({ where: { id: roomIdOrCode }, include });
     const room = byId ?? (await this.prisma.room.findFirst({ where: { inviteCode: roomIdOrCode.toUpperCase() }, include }));
     if (!room) throw new NotFoundException('Room not found');
+    // Regenera sempre: um relatorio pode ter sido gerado por uma versao antiga do codigo
+    // (ex.: antes das justificativas) e o usuario pode clicar de novo para refletir o estado atual.
     const existing = await this.prisma.sprintReport.findFirst({ where: { roomId: room.id }, orderBy: { generatedAt: 'desc' } });
-    if (existing) return existing;
-    const report = await this.prisma.sprintReport.create({ data: { roomId: room.id, summary: this.toSummary(room) } });
+    if (existing) await this.prisma.sprintReport.delete({ where: { id: existing.id } });
+    const summary = this.toSummary(room, options);
+    if (options?.withInsights !== false) {
+      summary.insights = await this.insights.generate(summary, room.config);
+    }
+    const report = await this.prisma.sprintReport.create({ data: { roomId: room.id, summary } });
     await this.prisma.room.update({ where: { id: room.id }, data: { status: 'encerrada' } });
     return report;
   }
@@ -45,8 +54,65 @@ export class ReportService {
     const report = await this.getWithAccess(reportId, token);
     if (!this.authorization.canExportReport(report.access.role, report.access.role === 'ScrumMaster')) throw new ForbiddenException('Export not authorized');
     const summary = report.report.summary as any;
-    const rows: string[][] = [['Historia', 'Status', 'Valor final', 'Rodadas', 'Segundos', 'Criterio'], ...(summary.stories ?? []).map((story: any) => [String(story.title), String(story.status), String(story.finalValue ?? ''), String(story.rounds ?? 0), String(story.totalSeconds ?? 0), String(story.criterion ?? '')])];
-    return rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
+    const line = (cells: any[]) => cells.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(',');
+    const csv: string[] = [];
+
+    // Cabecalho do documento (espelho da tela: sala, codigo, data).
+    csv.push(line(['Sala', summary.roomName ?? '']));
+    csv.push(line(['Codigo', summary.roomCode ?? '']));
+    csv.push(line(['Gerado em', summary.generatedAt ?? '']));
+    csv.push('');
+
+    // Historias: tabela tabular (mesmas colunas de antes).
+    csv.push(line(['SECAO', 'Historias']));
+    csv.push(line(['Historia', 'Status', 'Valor final', 'Rodadas', 'Segundos', 'Criterio', 'Justificativas', 'Ideias de tasks']));
+    for (const story of summary.stories ?? []) {
+      csv.push(line([
+        story.title,
+        story.status,
+        story.finalValue ?? '',
+        story.rounds ?? 0,
+        story.totalSeconds ?? 0,
+        story.criterion ?? '',
+        (story.roundsDetail ?? [])
+          .flatMap((round: any) => round.voteDetails ?? [])
+          .map((vote: any) => `${vote.participantName} (${vote.value})${vote.justification ? ': ' + vote.justification : ''}`)
+          .join(' | '),
+        summary.insights?.perStory?.find((insight: any) => insight.storyId === story.id)?.suggestedTasks?.join(' | ') ?? '',
+      ]));
+    }
+
+    const overall = summary.insights?.overall;
+    if (overall) {
+      csv.push('');
+      csv.push(line(['SECAO', 'Resumo da sessao']));
+      csv.push(line(['Sintese', overall.summary ?? '']));
+      if ((overall.suggestedTasks ?? []).length > 0) csv.push(line(['Tasks', overall.suggestedTasks.join(' | ')]));
+    }
+
+    csv.push('');
+    csv.push(line(['SECAO', 'Participacao']));
+    csv.push(line(['Nome', 'Votos', 'Comentarios']));
+    for (const person of summary.participation ?? []) {
+      csv.push(line([person.name ?? person.participantId, person.votes ?? 0, person.comments ?? 0]));
+    }
+
+    const badges = (summary.achievements ?? []).map((slug: string) => BADGE_LABELS[slug] ?? slug);
+    if (badges.length > 0) {
+      csv.push('');
+      csv.push(line(['SECAO', 'Badges']));
+      for (const badge of badges) csv.push(line(['Badge', badge]));
+    }
+
+    const notes = summary.roomNotes ?? [];
+    if (notes.length > 0) {
+      csv.push('');
+      csv.push(line(['SECAO', 'Anotacoes da mesa']));
+      csv.push(line(['Autor', 'Papel', 'Tipo', 'Texto']));
+      for (const note of notes) csv.push(line([note.author, note.role, note.type, note.text]));
+    }
+
+    return csv.join('\n');
   }
 
   async exportPdf(reportId: string, token: string) {
@@ -72,11 +138,28 @@ export class ReportService {
   }
 
   private reportInclude() {
-    return { stories: { include: { voteRounds: { include: { votes: true } } } }, messages: true, participants: { include: { user: true } } } as const;
+    return {
+      stories: { orderBy: { order: 'asc' }, include: { voteRounds: { orderBy: { number: 'asc' }, include: { votes: true } } } },
+      messages: { orderBy: { createdAt: 'asc' } },
+      participants: { include: { user: true } },
+      config: true,
+    } as const;
   }
 
-  private toSummary(room: any) {
+  private toSummary(room: any, options?: ReportOptions): any {
     const who = new Map<string, any>(room.participants.map((participant: any) => [participant.id, participant]));
+    const withChat = options?.withChat !== false;
+    const withVotes = options?.withVotes !== false;
+    const withRoomNotes = options?.withRoomNotes !== false;
+    const anonymous = room.config?.votoAnonimo === true;
+    const authorOf = (participantId: string) => {
+      const author = who.get(participantId);
+      return author?.roomDisplayName ?? author?.user?.name ?? participantId;
+    };
+    const roleOf = (participantId: string) => {
+      const author = who.get(participantId);
+      return author?.role ?? 'Dev';
+    };
     const stories = room.stories.map((story: any) => ({
       id: story.id,
       title: story.title,
@@ -97,21 +180,58 @@ export class ReportService {
         timerDeadline: round.timerDeadline,
         votes: round.votes.length,
         durationSeconds: this.roundDurationSeconds(round),
+        voteDetails: withVotes
+          ? round.votes
+              .filter((vote: any) => vote.revealed === true)
+              .slice()
+              .sort((a: any, b: any) => new Date(a.castAt).getTime() - new Date(b.castAt).getTime())
+              .map((vote: any) => ({
+                participantName: anonymous ? 'Participante' : authorOf(vote.participantId),
+                value: vote.value,
+                justification: vote.justification ?? null,
+              }))
+          : [],
       })),
-      comments: room.messages
-        .filter((message: any) => message.storyId === story.id)
-        .map((message: any) => {
-          const author = who.get(message.participantId);
-          return { id: message.id, author: author?.roomDisplayName ?? author?.user?.name ?? 'Sistema', role: author?.role ?? 'Dev', text: message.text, type: message.type, createdAt: message.createdAt.toISOString() };
-        }),
+      comments: withChat
+        ? room.messages
+            .filter((message: any) => message.storyId === story.id)
+            .map((message: any) => ({
+              id: message.id,
+              author: authorOf(message.participantId),
+              role: roleOf(message.participantId),
+              text: message.text,
+              type: message.type,
+              createdAt: message.createdAt.toISOString(),
+            }))
+        : [],
     }));
     const participation = room.participants.map((participant: any) => ({
       participantId: participant.id,
-      name: participant.roomDisplayName ?? participant.user?.name ?? participant.id,
+      name: authorOf(participant.id),
       votes: room.stories.flatMap((story: any) => story.voteRounds).flatMap((round: any) => round.votes).filter((vote: any) => vote.participantId === participant.id).length,
       comments: room.messages.filter((message: any) => message.participantId === participant.id).length,
     }));
-    return { roomId: room.id, roomName: room.name, roomCode: room.inviteCode, generatedAt: new Date().toISOString(), stories, participation, achievements: this.achievements.calculate(stories, participation) };
+    return {
+      roomId: room.id,
+      roomName: room.name,
+      roomCode: room.inviteCode,
+      generatedAt: new Date().toISOString(),
+      stories,
+      participation,
+      achievements: this.achievements.calculate(stories, participation),
+      roomNotes: withRoomNotes
+        ? room.messages
+            .filter((message: any) => !message.storyId)
+            .map((message: any) => ({
+              id: message.id,
+              author: authorOf(message.participantId),
+              role: roleOf(message.participantId),
+              text: message.text,
+              type: message.type,
+              createdAt: message.createdAt.toISOString(),
+            }))
+        : [],
+    };
   }
 
   private roundDurationSeconds(round: any) {

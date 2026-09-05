@@ -7,6 +7,17 @@ type ReportStory = {
   divergenceFinal?: { spread: number } | null;
 };
 
+// Mesmos rotulos do frontend (`frontend/src/features/report/ReportPage.tsx`), para que PDF/CSV
+// mostrem o badge com o mesmo nome que a tela.
+export const BADGE_LABELS: Record<string, string> = {
+  'primeira-estimativa': 'Primeira estimativa',
+  'backlog-concluido': 'Backlog concluído',
+  'time-participativo': 'Time participativo',
+  'consenso-unanime': 'Consenso unânime',
+  'divergencia-resolvida': 'Divergência resolvida',
+  'todos-votaram': 'Todos votaram',
+};
+
 @Injectable()
 export class AchievementsService {
   calculate(stories: ReportStory[], participation: Array<{ votes: number; comments: number }>) {

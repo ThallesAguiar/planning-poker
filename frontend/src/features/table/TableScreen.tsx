@@ -10,6 +10,8 @@ import { ChatPanel } from './ChatPanel';
 import { RoomConfiguration } from '../room/RoomConfiguration';
 import { useSelf } from './room-actions';
 
+type ReportSections = { withChat?: boolean; withVotes?: boolean; withRoomNotes?: boolean; withInsights?: boolean };
+
 function formatSeconds(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;
@@ -19,6 +21,8 @@ function formatSeconds(seconds: number) {
 export function TableScreen({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
   const [configOpen, setConfigOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportSections, setReportSections] = useState<ReportSections>({ withChat: true, withVotes: true, withRoomNotes: true, withInsights: true });
   const { state, currentStory, isPO } = useSelf();
   const roomError = useAppStore((s) => s.roomError);
   const clearError = useAppStore((s) => s.setRoomError);
@@ -27,8 +31,18 @@ export function TableScreen({ onLogout }: { onLogout: () => void }) {
 
   const generateReport = () => {
     if (!state) return;
+    // O controller REST espera o ReportOptions direto no body (sem wrapper 'sections');
+    // omite os campos que ficam ativos por padrao (true), enviando apenas o que for desativado.
+    const options: ReportSections = {};
+    if (!reportSections.withChat) options.withChat = false;
+    if (!reportSections.withVotes) options.withVotes = false;
+    if (!reportSections.withRoomNotes) options.withRoomNotes = false;
+    if (!reportSections.withInsights) options.withInsights = false;
+    const body = Object.keys(options).length > 0 ? JSON.stringify(options) : undefined;
     void fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:3000'}/rooms/${state.code}/report`, {
       method: 'POST',
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body,
     })
       .then((response) => response.json())
       .then((report) => navigate(`/report/${report.id}`))
@@ -84,9 +98,34 @@ export function TableScreen({ onLogout }: { onLogout: () => void }) {
             )}
             {phase === 'finalizada' && <p className="room-done">Sala encerrada. Gere o relatorio abaixo.</p>}
           </div>
-          <button className="report-link" onClick={generateReport}>
-            ▣ Gerar relatorio
-          </button>
+          <div className="report-trigger-wrap">
+            <button className="report-link" onClick={() => setReportOpen((v) => !v)}>
+              ▣ Gerar relatorio
+            </button>
+            {reportOpen && (
+              <div className="report-options-panel" role="dialog" aria-label="Opcoes do relatorio">
+                <strong>O que incluir</strong>
+                {([
+                  ['withChat', 'Conversas das historias'],
+                  ['withVotes', 'Votos por rodada'],
+                  ['withRoomNotes', 'Anotacoes da mesa'],
+                  ['withInsights', 'Sintese e ideias de tasks'],
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="report-option-toggle">
+                    <input
+                      type="checkbox"
+                      checked={reportSections[key]}
+                      onChange={(event) => setReportSections((prev) => ({ ...prev, [key]: event.target.checked }))}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+                <button className="primary" type="button" onClick={generateReport}>
+                  Gerar
+                </button>
+              </div>
+            )}
+          </div>
         </aside>
 
         <section className="table-area">

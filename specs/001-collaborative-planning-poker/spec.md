@@ -78,8 +78,9 @@ authorized Scrum Master can export it.
 session lifecycle.
 
 **Independent Test**: Finalize multiple stories with different round counts and discussion lengths,
-close the room, open its report, and verify story outcomes, timing, divergence, participation, and
-chat evidence are present.
+close the room, open its report, and verify story outcomes, timing, divergence, participation,
+per-vote justifications, per-round vote details, synthesis and suggested tasks, mesa notes, and chat
+evidence are present.
 
 **Acceptance Scenarios**:
 
@@ -92,6 +93,18 @@ chat evidence are present.
    shows voting participation, comment counts, and relevant justifications grouped by story.
 4. **Given** a completed session, **When** the PO or an authorized Scrum Master requests an export,
    **Then** the report can be downloaded in PDF and CSV formats with the same core data.
+5. **Given** a participant casts a card with an optional written justification, **When** the round is
+   revealed and the report is opened, **Then** each round lists who voted which value together with
+   that justification; the justification stays hidden during voting just like the card value.
+6. **Given** stories have outcomes, round counts, divergence, timing, or chat evidence, **When** the
+   report is generated, **Then** each story includes a synthesis paragraph and suggested follow-up
+   tasks, produced by the configured LLM or by deterministic heuristics when the LLM is unavailable.
+7. **Given** participants send messages outside a story round (mesa chat), **When** the report is
+   opened, **Then** those messages appear under "Anotações da mesa" grouped by author and role.
+8. **Given** the PO generates the report, **When** they choose which sections to include (chat, votes,
+   mesa notes, synthesis), **Then** the report contains only the selected sections.
+9. **Given** a room already has a report, **When** the PO generates it again, **Then** the previous
+   report is replaced by a freshly generated one reflecting the current session state.
 
 ### Edge Cases
 
@@ -131,7 +144,9 @@ chat evidence are present.
 - **FR-007**: System MUST start a numbered voting round for the presented story and record its start
   and end times.
 - **FR-008**: System MUST accept votes only from eligible participants and only for configured deck
-  values.
+  values, and MUST allow an optional short written justification per vote.
+- **FR-008a**: System MUST hide a vote justification along with the card value until an authorized
+  reveal occurs (same masking rules as the vote value).
 - **FR-009**: System MUST hide vote values from other participants until an authorized reveal occurs.
 - **FR-010**: System MUST show vote progress as the number of eligible participants who have voted,
   counting each participant once.
@@ -160,7 +175,19 @@ chat evidence are present.
 - **FR-022**: System MUST include final values, criteria, round counts, total reflection and discussion
   time, initial and final divergence, relevant chat, justifications, voting participation, and comment
   participation in the report.
-- **FR-023**: System MUST provide report viewing and authorized PDF and CSV export.
+- **FR-022a**: System MUST list per-round votes with participant names and values, and include an
+  optional justification per vote when provided (names masked under anonymous voting).
+- **FR-022b**: System MUST generate, per story, a synthesis paragraph and suggested follow-up tasks,
+  plus an overall session summary, using a hybrid approach: an LLM when configured, falling back to
+  deterministic heuristics derived from the session data.
+- **FR-022c**: System MUST include mesa notes ("Anotações da mesa") from messages sent outside any
+  story round, with author and role.
+- **FR-022d**: System MUST let the Product Owner choose which report sections are included at
+  generation time (chat, votes, mesa notes, synthesis), honoring the selection.
+- **FR-022e**: System MUST replace any existing report for the room when a new report is generated,
+  so the report always reflects the current session state.
+- **FR-023**: System MUST provide report viewing and authorized PDF and CSV export, with CSV carrying
+  the aggregated justifications and suggested-task columns.
 - **FR-029**: System MUST allow any participant with a valid room session to view a closed-room report
   while restricting PDF and CSV export to the Product Owner or an authorized Scrum Master.
 - **FR-024**: System MUST support an optional AI participant that appears with a role and avatar,
@@ -187,10 +214,35 @@ chat evidence are present.
 - **Story**: Ordered backlog item with title, description, status, final value, criterion, timing,
   and round count.
 - **Vote Round**: One estimation attempt for a story with number and lifecycle timestamps.
-- **Vote**: Participant's selected deck value and play/reveal state within a round.
+- **Vote**: Participant's selected deck value, optional written justification, and play/reveal state
+  within a round.
 - **Chat Message**: Room or story-linked comment, justification, or system event with author and time.
-- **Sprint Report**: Permanent aggregate of session outcomes, participation, discussion evidence,
-  achievements, and export references.
+- **Sprint Report**: Permanent aggregate of session outcomes, per-round vote details with
+  justifications, participation, discussion evidence, synthesis and suggested tasks, mesa notes,
+  achievements, and export references; replaceable when regenerated.
+
+## Delivered Scope *(2026-09-05)*
+
+The report now behaves as full session documentation: conversations, decisions, and related metadata.
+
+- **Per-vote justifications**: an optional short text attached to a card cast; masked during voting
+  and lobby (like the value), shown on the revealed card and in the report's "Rodada N" details.
+- **Per-round vote details**: each round lists who voted which value (anonymous rooms mask names),
+  with justification when given.
+- **Hybrid synthesis**: per-story synthesis + suggested follow-up tasks and an overall session summary.
+  Uses the configured LLM (`LLM_API_KEY`) when available; falls back deterministically to heuristics
+  (initial divergence → detail acceptance criteria; 2+ rounds → document divergence; high time →
+  split story; skipped story → revisit; chat evidence → convert to tasks).
+- **Mesa notes**: messages sent outside any story round are captured as "Anotações da mesa".
+- **Configurable sections**: at generation time the PO may include/exclude chat, votes, mesa notes, and
+  synthesis (`ReportOptions` accepted by both REST `POST /rooms/:id/report` and WS `report:generate`).
+- **Reports always current**: generating replaces any previous report for the room instead of returning
+  stale cached JSON.
+- **Deterministic ordering**: vote rounds are stored/read ordered by round number and votes by cast time,
+  so initial/final divergence and history display stay correct.
+- **CSV/PDF**: CSV adds aggregated justification and suggested-task columns.
+- **Auth/rooms**: user accounts, saved rooms, profile/role management, and the report are covered in
+  `002-user-auth-rooms/spec.md`.
 
 ## Success Criteria *(mandatory)*
 

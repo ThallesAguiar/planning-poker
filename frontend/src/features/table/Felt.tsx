@@ -13,6 +13,12 @@ function revealedValue(state: ReturnType<typeof useSelf>['state'], participantId
   return state?.votes.find((vote) => vote.participantId === participantId)?.value ?? null;
 }
 
+function revealedJustification(state: ReturnType<typeof useSelf>['state'], participantId: string) {
+  const phase = state?.phase;
+  if (phase !== 'revelada' && phase !== 'discussao') return null;
+  return state?.votes.find((vote) => vote.participantId === participantId)?.justification?.trim() || null;
+}
+
 export function Felt() {
   const { state, selfId, isPO, currentStory, votingCount, canReveal, phase } = useSelf();
   const aiStatus = useAppStore((s) => s.aiStatus);
@@ -71,6 +77,7 @@ export function Felt() {
       <div className="players-around">
         {seats.map((person, index) => {
           const value = revealedValue(state, person.id);
+          const justification = revealedJustification(state, person.id);
           const showFaceDown = person.hasVoted && !revealed;
           const isSelf = person.id === selfId;
           return (
@@ -110,6 +117,7 @@ export function Felt() {
                   </motion.span>
                 )}
               </AnimatePresence>
+              {revealed && justification && <small className="seat-justification">{justification}</small>}
               {!person.connected && <i className="seat-offline-mark">offline</i>}
             </motion.div>
           );

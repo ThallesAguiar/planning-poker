@@ -135,6 +135,7 @@ model Vote {
   voteRoundId String
   participantId String
   value String
+  justification String?
   castAt DateTime @default(now())
   revealed Boolean @default(false)
   round VoteRound @relation(fields: [voteRoundId], references: [id], onDelete: Cascade)

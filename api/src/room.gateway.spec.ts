@@ -116,6 +116,7 @@ create: vi.fn(async (args: any) => {
     round,
     presence,
     rooms,
+    { generate: vi.fn() } as any,
   );
   gateway.server = server as unknown as Server;
   round.setEmitter({

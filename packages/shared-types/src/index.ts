@@ -35,12 +35,14 @@ export type RoomProfileUpdate = { name?: string; avatar?: string };
 export type RoomRoleChangeRequest = { id: string; requesterParticipantId: string; requesterName?: string; currentRole: ParticipantRole; requestedRole: ParticipantRole; status: 'pending' | 'approved' | 'rejected' | 'cancelled'; createdAt: string; decidedAt?: string | null };
 export type Story = { id: string; title: string; description: string; order: number; status: StoryStatus; finalValue?: VoteValue | null; criterion?: string | null; rounds: number };
 export type ChatMessage = { id: string; author: string; role: ParticipantRole; text: string; type: 'commentario' | 'justificativa' | 'sistema'; createdAt: string };
-export type VoteReveal = { participantId: string; participantName: string; value: VoteValue };
+export type VoteReveal = { participantId: string; participantName: string; value: VoteValue; justification?: string | null };
 export type RoomState = { roomId: string; name: string; code: string; status: RoomStatus; visibility: RoomVisibility; ownerId?: string; config: RoomConfig; participants: Participant[]; stories: Story[]; currentStoryId?: string; roundId?: string; phase: RoomPhase; votes: VoteReveal[]; remainingSeconds: number | null; timerType?: TimerType | null; messages: ChatMessage[]; roleRequests: RoomRoleChangeRequest[] };
 export type RoomErrorPayload = { code: RoomErrorCode; message: string };
 export type ParticipantUpdateReason = 'joined' | 'left' | 'disconnected' | 'reconnected' | 'removed' | 'status' | 'role' | 'owner';
 export type ParticipantUpdate = { participant: Participant; reason: ParticipantUpdateReason; ownerId?: string };
-export type ReportSummary = { id: string; roomId: string; roomName?: string; roomCode?: string; generatedAt: string; stories: (Story & { totalSeconds?: number; comments?: { id: string; author: string; role: ParticipantRole; text: string; type: ChatMessage['type']; createdAt: string }[]; roundsDetail?: { number: number; startedAt: string; endedAt?: string | null; timerType?: string | null; timerDeadline?: string | null; votes: number; durationSeconds?: number }[]; divergenceInitial?: { min: number; max: number; spread: number } | null; divergenceFinal?: { min: number; max: number; spread: number } | null })[]; participation: { participantId: string; name?: string; votes: number; comments: number }[]; achievements: string[]; exportUrls?: { csv?: string; pdf?: string } };
+export type ReportOptions = { withChat?: boolean; withVotes?: boolean; withRoomNotes?: boolean; withInsights?: boolean };
+export type ReportInsight = { summary: string; suggestedTasks: string[] };
+export type ReportSummary = { id: string; roomId: string; roomName?: string; roomCode?: string; generatedAt: string; stories: (Story & { totalSeconds?: number; comments?: { id: string; author: string; role: ParticipantRole; text: string; type: ChatMessage['type']; createdAt: string }[]; roundsDetail?: { number: number; startedAt: string; endedAt?: string | null; timerType?: string | null; timerDeadline?: string | null; votes: number; durationSeconds?: number; voteDetails?: { participantName: string; value: string; justification?: string | null }[] }[]; divergenceInitial?: { min: number; max: number; spread: number } | null; divergenceFinal?: { min: number; max: number; spread: number } | null })[]; participation: { participantId: string; name?: string; votes: number; comments: number }[]; achievements: string[]; roomNotes?: { id: string; author: string; role: ParticipantRole; text: string; type: ChatMessage['type']; createdAt: string }[]; insights?: { overall: ReportInsight; perStory: { storyId: string; title: string; summary: string; suggestedTasks: string[] }[] }; exportUrls?: { csv?: string; pdf?: string } };
 export type RestError = { code: RoomErrorCode; message: string; details?: Record<string, unknown> };
 
 export type ClientToServerEvents = {
@@ -55,14 +57,14 @@ export type ClientToServerEvents = {
   'room:setParticipantStatus': (payload: { participantId: string; status: ParticipantStatus }) => void;
   'story:create': (payload: { title: string; description?: string }) => void;
   'story:present': (payload: { storyId: string }) => void;
-  'vote:cast': (payload: { storyId: string; value: VoteValue }) => void;
+  'vote:cast': (payload: { storyId: string; value: VoteValue; justification?: string }) => void;
   'vote:forceReveal': () => void;
   'vote:revote': () => void;
   'story:finalize': (payload: { value: VoteValue; criterion: RoomConfig['criterioConsenso'] }) => void;
   'story:skip': () => void;
   'chat:message': (payload: { text: string; type?: ChatMessage['type'] }) => void;
   'reaction:send': (payload: { value: string }) => void;
-  'report:generate': () => void;
+  'report:generate': (payload?: { sections?: ReportOptions }) => void;
   'ai:requestVote': () => void;
 };
 

@@ -2,9 +2,9 @@ import { socket } from '../../lib/socket';
 import { useAppStore } from '../../stores/app-store';
 import type { ConsensusCriterion, ParticipantRole, ParticipantStatus, VoteValue } from '@planning-poker/shared-types';
 
-export function castVote(storyId: string, value: VoteValue) {
+export function castVote(storyId: string, value: VoteValue, justification?: string) {
   useAppStore.getState().setRoomError(null);
-  socket.emit('vote:cast', { storyId, value });
+  socket.emit('vote:cast', { storyId, value, justification });
 }
 
 export function forceReveal() {

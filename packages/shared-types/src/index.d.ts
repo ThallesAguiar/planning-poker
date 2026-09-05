@@ -94,6 +94,7 @@ export type VoteReveal = {
     participantId: string;
     participantName: string;
     value: VoteValue;
+    justification?: string | null;
 };
 export type RoomState = {
     roomId: string;
@@ -124,17 +125,81 @@ export type ParticipantUpdate = {
     reason: ParticipantUpdateReason;
     ownerId?: string;
 };
+export type ReportOptions = {
+    withChat?: boolean;
+    withVotes?: boolean;
+    withRoomNotes?: boolean;
+    withInsights?: boolean;
+};
+export type ReportInsight = {
+    summary: string;
+    suggestedTasks: string[];
+};
 export type ReportSummary = {
     id: string;
     roomId: string;
+    roomName?: string;
+    roomCode?: string;
     generatedAt: string;
-    stories: Story[];
+    stories: (Story & {
+        totalSeconds?: number;
+        comments?: {
+            id: string;
+            author: string;
+            role: ParticipantRole;
+            text: string;
+            type: ChatMessage['type'];
+            createdAt: string;
+        }[];
+        roundsDetail?: {
+            number: number;
+            startedAt: string;
+            endedAt?: string | null;
+            timerType?: string | null;
+            timerDeadline?: string | null;
+            votes: number;
+            durationSeconds?: number;
+            voteDetails?: {
+                participantName: string;
+                value: string;
+                justification?: string | null;
+            }[];
+        }[];
+        divergenceInitial?: {
+            min: number;
+            max: number;
+            spread: number;
+        } | null;
+        divergenceFinal?: {
+            min: number;
+            max: number;
+            spread: number;
+        } | null;
+    })[];
     participation: {
         participantId: string;
+        name?: string;
         votes: number;
         comments: number;
     }[];
     achievements: string[];
+    roomNotes?: {
+        id: string;
+        author: string;
+        role: ParticipantRole;
+        text: string;
+        type: ChatMessage['type'];
+        createdAt: string;
+    }[];
+    insights?: {
+        overall: ReportInsight;
+        perStory: {
+            storyId: string;
+            title: string;
+            summary: string;
+            suggestedTasks: string[];
+        }[];
+    };
     exportUrls?: {
         csv?: string;
         pdf?: string;
@@ -187,6 +252,7 @@ export type ClientToServerEvents = {
     'vote:cast': (payload: {
         storyId: string;
         value: VoteValue;
+        justification?: string;
     }) => void;
     'vote:forceReveal': () => void;
     'vote:revote': () => void;
@@ -202,7 +268,9 @@ export type ClientToServerEvents = {
     'reaction:send': (payload: {
         value: string;
     }) => void;
-    'report:generate': () => void;
+    'report:generate': (payload?: {
+        sections?: ReportOptions;
+    }) => void;
     'ai:requestVote': () => void;
 };
 export type ServerToClientEvents = {
