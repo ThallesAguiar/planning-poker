@@ -67,9 +67,9 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Persistir mensagens realtime de chat.
 - [x] Persistir estado atual da rodada e seus timers; deadlines salvos em `VoteRound`; `round.service.resumeFromStorage` restaura timer ou transiciona fase expirada.
 - [x] Gerar migration Prisma versionada `0001_realtime_baseline`.
-- [ ] Criar seed com 4 participantes e 1 IA.
-- [ ] Implementar consultas de historico e relatorios anteriores.
-- [~] Schema/migration de autenticacao de usuario, perfil por sala, `lastSeenAt` e solicitacao de papel adicionados; migration ainda precisa ser aplicada em banco real.
+- [x] Criar seed com 5 participantes (host + 4) e 1 IA via `npm run db:seed` (idempotente).
+- [x] Implementar consultas de historico e relatorios anteriores (`listForRoom` + `GET /reports/:id`).
+- [x] Schema/migration de autenticacao de usuario, perfil por sala, `lastSeenAt` e solicitacao de papel adicionados; migration aplicada em banco real.
 
 ## 4. Backend NestJS e REST
 
@@ -92,9 +92,9 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [ ] Fluxo de convite por codigo/link.
 - [~] Autenticacao leve com JWT de conta implementada para registro, login, me e logout em `api/src/auth`; cobertura REST completa ainda pendente.
 - [x] Guardas e autorizacao por papel, principalmente PO, em todos os eventos administrativos com `room:error` padronizado.
-- [~] Endpoints de login, cadastro, logout, `GET /auth/me`, `GET /rooms/mine`, join com conta e rejoin de membro adicionados; E2E completo ainda pendente.
-- [~] Endpoint para listar relatorios e sessoes passadas com sessao JWT; rota de visualizacao implementada, validacao E2E ainda pendente.
-- [~] Exportacao de relatorio em CSV e PDF; rotas e botoes frontend implementados, testes de download/compatibilidade ainda pendentes.
+- [x] Endpoints de login, cadastro, logout, `GET /auth/me`, `GET /rooms/mine`, join com conta e rejoin de membro adicionados; E2E US1/US2 aprovados.
+- [x] Endpoint para listar relatorios e sessoes passadas com sessao JWT; rota de visualizacao validada por E2E.
+- [x] Exportacao de relatorio em CSV e PDF; rotas e botoes frontend implementados, downloads autenticados validados por E2E.
 
 ## 5. Gateway e realtime
 
@@ -202,13 +202,13 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Reacoes flutuantes sobre a mesa (paleta de reacoes + bolhas animadas via `reaction:send`/`reaction:show`).
 - [x] Confete/particulas em consenso (dispara em `vote:reveal` `unanimous`).
 - [x] Animacao de cartas: flip simultaneo na revelacao e deslize/entrada em cascata da mao (Framer Motion).
-- [ ] Badges/achievements no relatorio.
+- [x] Badges/achievements no relatorio (chips legiveis com rotulos pt-BR).
 - [ ] Sons opcionais com mute.
 - [ ] Estrutura de temas/skins.
-- [ ] Tela dedicada de relatorio com exportacoes.
+- [x] Tela dedicada de relatorio com exportacoes (`/report/:id` com CSV/PDF autenticados).
 - [x] Estados de erro (room-error-toast), reconexao (connectionStatus), carregamento e sala encerrada.
 - [x] Teste visual e responsivo em desktop e mobile (Playwright com viewport 390x844).
-- [~] Login/cadastro basico, sessao de conta, `Minhas Salas` via API e rejoin por conta adicionados sem redesenho amplo; testes Playwright especificos ainda pendentes.
+- [x] Login/cadastro basico, sessao de conta, `Minhas Salas` via API e rejoin por conta adicionados sem redesenho amplo; testes Playwright aprovados.
 - [x] Painel de participantes com moderacao (remover, afastar/reativar, transferir PO).
 - [x] Status de IA: idle, voting, voted, unavailable, error.
 - [x] Regras reais da sala vindas do backend (deck, tempos, IA, voto anonimo, revelacao automatica).
@@ -242,15 +242,15 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 
 ### Pendente
 
-- [~] Compilar historias, valor final, criterio e rodadas.
-- [ ] Calcular tempo de reflexao e discussao por historia.
-- [ ] Registrar divergencia inicial e final.
-- [ ] Associar chat e justificativas por historia.
+- [x] Compilar historias, valor final, criterio e rodadas.
+- [x] Calcular tempo de reflexao e discussao por historia (`totalSeconds` + `durationSeconds` por rodada).
+- [x] Registrar divergencia inicial e final (`divergenceInitial`/`divergenceFinal`).
+- [x] Associar chat e justificativas por historia (`comments` com autor e papel).
 - [x] Consolidar participacao e comentarios.
-- [x] Calcular badges/achievements basicos a partir de historias e participacao em `api/src/reports/achievements.service.ts`.
-- [~] Gerar pagina web permanente via rota `/report/:id` com historias, participacao e achievements; refinamentos visuais ainda pendentes.
-- [~] Exportar CSV e PDF; ambas rotas implementadas, testes de download/compatibilidade ainda pendentes.
-- [ ] Emitir `report:ready` para todos na sala.
+- [x] Calcular badges/achievements a partir de historias e participacao em `api/src/reports/achievements.service.ts` (inclui consenso-unanime, divergencia-resolvida, time-participativo, todos-votaram, backlog-concluido, primeira-estimativa).
+- [x] Gerar pagina web permanente via rota `/report/:id` com historias, participacao (nomes), badges, comentarios e tempos por rodada.
+- [x] Exportar CSV e PDF; downloads autenticados validados por E2E (content-type/corpo CSV e cabecalho `%PDF`).
+- [x] Emitir `report:ready` para todos na sala.
 
 ## 9. Qualidade e verificacao
 
@@ -348,8 +348,12 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Relatorios: renderer PDF e rota `/reports/:id/export.pdf` adicionados; API test/build/lint aprovados.
 - [x] API: 12 arquivos de teste e 18 testes passando apos integracao de PDF e achievements.
 - [x] Frontend: download autenticado de PDF e exibicao de achievements adicionados; build/lint aprovados.
-- [~] Teste unitario de exportacao PDF adicionado; teste de download HTTP e compatibilidade de arquivo ainda pendentes.
-- [~] Relatorio agora calcula divergencia numerica inicial/final quando ha votos; tempos detalhados e validacao E2E ainda pendentes.
+- [x] Teste unitario de exportacao PDF adicionado; download HTTP e compatibilidade de arquivo validados por E2E.
+- [x] Relatorio agora calcula divergencia numerica inicial/final quando ha votos, tempos detalhados por rodada e validacao E2E completa.
+- [x] Relatorio: API enriquecida (roomName/roomCode, comments por historia com autor/papel, durationSeconds em roundsDetail, divergencia inicial/final) e novos badges (consenso-unanime, divergencia-resolvida, time-participativo, todos-votaram, backlog-concluido, primeira-estimativa); `npm run build` e 53 testes de API aprovados.
+- [x] Relatorio: `ReportPage` reescrita com participacao por nomes, badges em chips legiveis, comentarios e duracoes por rodada; frontend build/lint aprovados.
+- [x] E2E: 20 testes Playwright aprovados em `FRONTEND_URL=http://localhost:5173`/`VITE_API_URL=http://localhost:3333` (report.spec: rodada com divergencia->consenso, geracao e pagina do relatorio + downloads CSV/PDF autenticados; auth-rooms.spec: US1 logout/credenciais invalidas, US2 criar sala logado/Minhas Salas/rejoin; visual-baseline alinhado a aba padrao `Sua conta`).
+- [x] Seed: `npm run db:seed` idempotente cria conta demo (`demo@planningpoker.app`/`demo1234`, papel PO) e sala publica `DEMO01` com 5 participantes + 1 IA; verificado via login REST e consulta ao banco.
 - [x] Feature `002-user-auth-rooms`: `npx prisma validate`, `npx prisma generate`, `api npm run build`, testes unitarios de auth/session e `frontend npm run build` executados apos foundation de autenticacao e salas salvas.
 - [x] Feature `002-user-auth-rooms`: `api npm test` completo aprovado com 13 arquivos e 24 testes; `frontend npm run lint` e `docker compose config --quiet` aprovados.
 - [~] Feature `002-user-auth-rooms`: tasks T001-T018, T022-T030, T035-T042, T047-T052, T065-T069 e T071-T072 marcadas em `specs/002-user-auth-rooms/tasks.md`; testes REST/E2E de US1/US2, UI de US3 e visual/E2E de US4 ainda pendentes.
@@ -363,7 +367,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [ ] Testes com Redis adapter e multiplas instancias.
 - [ ] Testes E2E frontend em dois navegadores.
 - [~] Teste Playwright Chromium cobre criacao de sala privada e entrada por codigo+senha direto para mesa em `frontend/tests/room-entry.spec.ts`; segundo navegador ainda pendente.
-- [ ] Testes de exportacao PDF/CSV.
+- [x] Testes de exportacao PDF/CSV (E2E `report.spec.ts`).
 - [~] Testes unitarios de timeout, saida invalida, chave ausente e limite de custo adicionados; testes de integracao/fallback humano pendentes.
 - [x] Testes unitarios de deadline, substituicao e cancelamento do timer em `api/src/realtime/timer.service.spec.ts`.
 

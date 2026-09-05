@@ -40,7 +40,7 @@ export type RoomState = { roomId: string; name: string; code: string; status: Ro
 export type RoomErrorPayload = { code: RoomErrorCode; message: string };
 export type ParticipantUpdateReason = 'joined' | 'left' | 'disconnected' | 'reconnected' | 'removed' | 'status' | 'role' | 'owner';
 export type ParticipantUpdate = { participant: Participant; reason: ParticipantUpdateReason; ownerId?: string };
-export type ReportSummary = { id: string; roomId: string; generatedAt: string; stories: Story[]; participation: { participantId: string; votes: number; comments: number }[]; achievements: string[]; exportUrls?: { csv?: string; pdf?: string } };
+export type ReportSummary = { id: string; roomId: string; roomName?: string; roomCode?: string; generatedAt: string; stories: (Story & { totalSeconds?: number; comments?: { id: string; author: string; role: ParticipantRole; text: string; type: ChatMessage['type']; createdAt: string }[]; roundsDetail?: { number: number; startedAt: string; endedAt?: string | null; timerType?: string | null; timerDeadline?: string | null; votes: number; durationSeconds?: number }[]; divergenceInitial?: { min: number; max: number; spread: number } | null; divergenceFinal?: { min: number; max: number; spread: number } | null })[]; participation: { participantId: string; name?: string; votes: number; comments: number }[]; achievements: string[]; exportUrls?: { csv?: string; pdf?: string } };
 export type RestError = { code: RoomErrorCode; message: string; details?: Record<string, unknown> };
 
 export type ClientToServerEvents = {

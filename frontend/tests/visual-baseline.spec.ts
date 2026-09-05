@@ -7,6 +7,7 @@ test("entry shell keeps approved visual structure", async ({ page }) => {
   await page.goto(appUrl);
 
   await expect(page.getByText("PLANNING POKER")).toBeVisible();
+  await page.getByRole("tab", { name: "Mesa" }).click();
   await expect(page.getByRole("heading", { name: "Entrar na mesa" })).toBeVisible();
   await expect(page.locator(".entry-card-fan")).toBeVisible();
   await expect(page.locator("form.join-panel")).toHaveCount(1);
@@ -20,6 +21,7 @@ test("room shell keeps table structure after joining", async ({ page, request })
   const room = await response.json();
 
   await page.goto(appUrl);
+  await page.getByRole("tab", { name: "Mesa" }).click();
   await page.locator("input").nth(0).fill("Jogador Visual");
   await page.locator("input").nth(1).fill(room.code);
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();

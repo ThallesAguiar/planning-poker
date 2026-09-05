@@ -17,13 +17,15 @@ export class ReportService {
     private readonly pdf: PdfExportService,
   ) {}
 
-  async generate(roomId: string) {
-    const room = await this.prisma.room.findUnique({ where: { id: roomId }, include: this.reportInclude() });
+  async generate(roomIdOrCode: string) {
+    const include = this.reportInclude();
+    const byId = await this.prisma.room.findUnique({ where: { id: roomIdOrCode }, include });
+    const room = byId ?? (await this.prisma.room.findFirst({ where: { inviteCode: roomIdOrCode.toUpperCase() }, include }));
     if (!room) throw new NotFoundException('Room not found');
-    const existing = await this.prisma.sprintReport.findFirst({ where: { roomId }, orderBy: { generatedAt: 'desc' } });
+    const existing = await this.prisma.sprintReport.findFirst({ where: { roomId: room.id }, orderBy: { generatedAt: 'desc' } });
     if (existing) return existing;
-    const report = await this.prisma.sprintReport.create({ data: { roomId, summary: this.toSummary(room) } });
-    await this.prisma.room.update({ where: { id: roomId }, data: { status: 'encerrada' } });
+    const report = await this.prisma.sprintReport.create({ data: { roomId: room.id, summary: this.toSummary(room) } });
+    await this.prisma.room.update({ where: { id: room.id }, data: { status: 'encerrada' } });
     return report;
   }
 
@@ -70,13 +72,58 @@ export class ReportService {
   }
 
   private reportInclude() {
-    return { stories: { include: { voteRounds: { include: { votes: true } } } }, messages: true, participants: true } as const;
+    return { stories: { include: { voteRounds: { include: { votes: true } } } }, messages: true, participants: { include: { user: true } } } as const;
   }
 
   private toSummary(room: any) {
-    const stories = room.stories.map((story: any) => ({ id: story.id, title: story.title, description: story.description, order: story.order, status: story.status, finalValue: story.finalValue, criterion: story.criterion, rounds: story.rounds, totalSeconds: story.totalSeconds, divergenceInitial: this.divergence(story.voteRounds[0]?.votes), divergenceFinal: this.divergence(story.voteRounds.at(-1)?.votes), roundsDetail: story.voteRounds.map((round: any) => ({ number: round.number, startedAt: round.startedAt, endedAt: round.endedAt, votes: round.votes.length })) }));
-    const participation = room.participants.map((participant: any) => ({ participantId: participant.id, votes: room.stories.flatMap((story: any) => story.voteRounds).flatMap((round: any) => round.votes).filter((vote: any) => vote.participantId === participant.id).length, comments: room.messages.filter((message: any) => message.participantId === participant.id).length }));
-    return { roomId: room.id, generatedAt: new Date().toISOString(), stories, participation, achievements: this.achievements.calculate(stories, participation) };
+    const who = new Map<string, any>(room.participants.map((participant: any) => [participant.id, participant]));
+    const stories = room.stories.map((story: any) => ({
+      id: story.id,
+      title: story.title,
+      description: story.description,
+      order: story.order,
+      status: story.status,
+      finalValue: story.finalValue,
+      criterion: story.criterion,
+      rounds: story.rounds,
+      totalSeconds: this.storyTotalSeconds(story.voteRounds),
+      divergenceInitial: this.divergence(story.voteRounds[0]?.votes),
+      divergenceFinal: this.divergence(story.voteRounds.at(-1)?.votes),
+      roundsDetail: story.voteRounds.map((round: any) => ({
+        number: round.number,
+        startedAt: round.startedAt,
+        endedAt: round.endedAt,
+        timerType: round.timerType,
+        timerDeadline: round.timerDeadline,
+        votes: round.votes.length,
+        durationSeconds: this.roundDurationSeconds(round),
+      })),
+      comments: room.messages
+        .filter((message: any) => message.storyId === story.id)
+        .map((message: any) => {
+          const author = who.get(message.participantId);
+          return { id: message.id, author: author?.roomDisplayName ?? author?.user?.name ?? 'Sistema', role: author?.role ?? 'Dev', text: message.text, type: message.type, createdAt: message.createdAt.toISOString() };
+        }),
+    }));
+    const participation = room.participants.map((participant: any) => ({
+      participantId: participant.id,
+      name: participant.roomDisplayName ?? participant.user?.name ?? participant.id,
+      votes: room.stories.flatMap((story: any) => story.voteRounds).flatMap((round: any) => round.votes).filter((vote: any) => vote.participantId === participant.id).length,
+      comments: room.messages.filter((message: any) => message.participantId === participant.id).length,
+    }));
+    return { roomId: room.id, roomName: room.name, roomCode: room.inviteCode, generatedAt: new Date().toISOString(), stories, participation, achievements: this.achievements.calculate(stories, participation) };
+  }
+
+  private roundDurationSeconds(round: any) {
+    const end = round.endedAt ?? round.timerDeadline;
+    if (!end || !round.startedAt) return 0;
+    const endMs = new Date(end).getTime();
+    const startMs = new Date(round.startedAt).getTime();
+    return Math.max(0, Math.round((endMs - startMs) / 1000));
+  }
+
+  private storyTotalSeconds(voteRounds: any[]) {
+    return (voteRounds ?? []).reduce((total, round) => total + this.roundDurationSeconds(round), 0);
   }
 
   private divergence(votes: any[] | undefined) {

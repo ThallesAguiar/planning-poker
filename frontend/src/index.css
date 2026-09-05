@@ -95,10 +95,19 @@ button:focus-visible, input:focus-visible { outline: 3px solid #d7f36a; outline-
 .report-page { min-height: 100vh; padding: 48px 24px; background: #111714; color: #f6f0e7; }
 .report-card { width: min(100%, 900px); margin: 0 auto; background: #f4f0e9; color: #202a22; border-radius: 16px; padding: clamp(24px, 5vw, 56px); }
 .report-card h1 { margin: 28px 0 6px; font-size: clamp(30px, 5vw, 52px); }
+.report-card h2 { margin: 26px 0 10px; font-size: 18px; }
 .report-muted { color: #687268; }
 .report-stories { display: grid; gap: 10px; margin: 32px 0; }
-.report-stories article { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 16px; background: #fff; border-radius: 8px; }
+.report-stories article { display: block; padding: 16px; background: #fff; border-radius: 8px; }
+.report-story-head { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; }
 .report-stories span, .report-stories small { color: #687268; font-size: 11px; }
+.report-rounds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.report-rounds span { padding: 3px 8px; border-radius: 999px; background: #eef1e6; font-size: 10px; }
+.report-comments { margin-top: 14px; border-top: 1px dashed #cfd6c8; padding-top: 10px; display: grid; gap: 6px; }
+.report-comments p { margin: 0; font-size: 12px; }
+.report-comments b { color: #202a22; }
+.report-comments small { color: #7a8478; margin-left: 4px; text-transform: capitalize; }
+.report-comments span { display: block; color: #444e46; margin-top: 2px; }
 .report-download { display: inline-block; text-decoration: none; }
 .join-panel .primary { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
 

@@ -15,7 +15,8 @@ import type { Server, Socket } from 'socket.io';
 type Harness = ReturnType<typeof buildHarness>;
 
 function buildHarness() {
-const participantsByUser = new Map<string, any>();
+const roleRequests = new Map<string, any>();
+  const participantsByUser = new Map<string, any>();
   const participantsById = new Map<string, any>();
   const stories: any[] = [];
   let pidCounter = 1;
@@ -54,7 +55,7 @@ const participantsByUser = new Map<string, any>();
     },
     roomConfig: { update: vi.fn(async () => ({})) },
     roomParticipant: {
-      findUnique: vi.fn(async (args: any) => participantsByUser.get(args.where.roomId_userId.userId) ?? null),
+      findUnique: vi.fn(async (args: any) => (args.where?.roomId_userId ? participantsByUser.get(args.where.roomId_userId.userId) : participantsById.get(args.where?.id)) ?? null),
       findMany: vi.fn(async () => []),
 create: vi.fn(async (args: any) => {
         const row = { id: `p${pidCounter++}`, ...args.data, status: 'ativo', joinedAt: new Date(), lastSeenAt: new Date() };
