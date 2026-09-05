@@ -49,6 +49,7 @@ export class RoundService {
       remainingSeconds: state.remainingSeconds,
       timerType: state.timerType,
       messages: state.messages,
+      roleRequests: state.roleRequests ?? [],
     };
   }
 

@@ -11,6 +11,7 @@ import type {
   RoomErrorCode,
   TimerType,
   VoteValue,
+  RoomRoleChangeRequest,
 } from '@planning-poker/shared-types';
 
 export type InternalParticipant = Participant & { userId: string; status: ParticipantStatus };
@@ -37,6 +38,7 @@ export type InternalRoomState = {
   remainingSeconds: number | null;
   timerType: TimerType | null;
   messages: InternalMessage[];
+  roleRequests?: RoomRoleChangeRequest[];
   timer?: NodeJS.Timeout;
 };
 

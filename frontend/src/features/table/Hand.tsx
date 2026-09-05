@@ -11,15 +11,22 @@ export function Hand() {
   const playHint = hasVoted ? 'Carta jogada — aguarde a revelacao.' : !currentStory ? 'Nenhuma historia em votacao no momento.' : phase !== 'votacao' ? 'A votacao nao esta aberta.' : 'Selecione uma carta e jogue.';
 
   return (
-    <div className={`hand ${hasVoted || !playable ? 'is-dimmed' : ''}`}>
+    <motion.div
+      className={`hand ${hasVoted || !playable ? 'is-dimmed' : ''}`}
+      animate={{ y: hasVoted ? 14 : 0, opacity: hasVoted ? 0.55 : 1 }}
+      transition={{ duration: 0.28, ease: 'easeOut' }}
+    >
       <div className="hand-title">
         <span>Sua mao</span>
         <small>{selected === null ? playHint : `Carta ${String(selected)} selecionada`}</small>
         {isObserver && <small>Voce e um Observador: apenas assiste.</small>}
       </div>
       <div className="cards">
-        {deck.map((value) => (
+        {deck.map((value, index) => (
           <motion.button
+            initial={{ y: 22, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.24, delay: index * 0.035, ease: 'easeOut' }}
             whileHover={{ y: -10 }}
             whileTap={{ scale: 0.94 }}
             className={selected === value ? 'card selected' : 'card'}
@@ -44,6 +51,6 @@ export function Hand() {
       >
         Jogar carta <span aria-hidden="true">↑</span>
       </button>
-    </div>
+    </motion.div>
   );
 }

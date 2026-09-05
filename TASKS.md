@@ -181,6 +181,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Restauração de sessão inválida não entra em loop: token/sessão antigos são removidos após `room:error`, e cada rota recebe no máximo uma tentativa automática.
 - [x] Socket.IO limita tentativas automáticas de reconexão para evitar flood quando backend ou sessão está indisponível.
 - [x] Reconexão de sala privada com token válido não exige senha novamente; senha fica apenas na `sessionStorage` enquanto necessária ao fluxo de entrada.
+- [x] Troca de papel aprovada pelo host (US3): `room:roleChangeRequest` lido no painel de participantes (solicitar papel), host aprova/recusa via `room:profileDecision`; `room:state` agora traz `roleRequests` pendentes (backend `getPendingRoleRequests` + memória do gateway), sobrevivendo a reload e funcionando para guest e conta.
 - [x] Loading de reconexao deixou de usar o visual da tela de entrada: novo `restoring-shell`/`restoring-card`/spinner em tema escuro da mesa; `restoringRoom` so renderiza loading enquanto nao entrou na mesa (`joined`), evitando travamento ao levar sessao da home para `/room/:code`.
 
 - [x] Fluxo entrada/mesa separado: mesa so renderiza apos `room:state` confirmado da sala atual, sem flash ao errar senha, usar sala inexistente ou receber token invalido.
@@ -198,7 +199,9 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [ ] Animacao completa de carta deslizando e flip simultaneo.
 - [x] Fase de discussao, revote, finalizacao e proxima historia com botoes de moderacao PO.
 - [ ] Confete/particulas em consenso.
-- [ ] Reacoes flutuantes sobre a mesa.
+- [x] Reacoes flutuantes sobre a mesa (paleta de reacoes + bolhas animadas via `reaction:send`/`reaction:show`).
+- [x] Confete/particulas em consenso (dispara em `vote:reveal` `unanimous`).
+- [x] Animacao de cartas: flip simultaneo na revelacao e deslize/entrada em cascata da mao (Framer Motion).
 - [ ] Badges/achievements no relatorio.
 - [ ] Sons opcionais com mute.
 - [ ] Estrutura de temas/skins.

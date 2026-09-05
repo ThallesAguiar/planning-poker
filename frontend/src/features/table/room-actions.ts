@@ -1,6 +1,6 @@
 import { socket } from '../../lib/socket';
 import { useAppStore } from '../../stores/app-store';
-import type { ConsensusCriterion, ParticipantStatus, VoteValue } from '@planning-poker/shared-types';
+import type { ConsensusCriterion, ParticipantRole, ParticipantStatus, VoteValue } from '@planning-poker/shared-types';
 
 export function castVote(storyId: string, value: VoteValue) {
   useAppStore.getState().setRoomError(null);
@@ -46,6 +46,21 @@ export function presentStory(storyId: string) {
 export function sendChatMessage(text: string) {
   useAppStore.getState().setRoomError(null);
   socket.emit('chat:message', { text });
+}
+
+export function sendReaction(value: string) {
+  useAppStore.getState().setRoomError(null);
+  socket.emit('reaction:send', { value });
+}
+
+export function requestRoleChange(role: ParticipantRole) {
+  useAppStore.getState().setRoomError(null);
+  socket.emit('room:roleChangeRequest', { role });
+}
+
+export function decideRoleChange(requestId: string, decision: 'approved' | 'rejected') {
+  useAppStore.getState().setRoomError(null);
+  socket.emit('room:profileDecision', { requestId, decision });
 }
 
 export function configureRoom(patch: Record<string, unknown>) {

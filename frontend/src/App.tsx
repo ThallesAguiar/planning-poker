@@ -184,6 +184,16 @@ export function App({ mode }: { mode: "home" | "room" }) {
     const reportReady = (payload: { reportId: string }) => {
       if (mode === "room") navigate(`/report/${payload.reportId}`);
     };
+    const reaction = (payload: { value: string; participantId: string }) => {
+      useAppStore.getState().pushReaction(payload.participantId, payload.value);
+    };
+    const reveal = (payload: { unanimous: boolean }) => {
+      if (payload.unanimous) useAppStore.getState().triggerConfetti();
+    };
+    const roleRequestPending = (request: any) => useAppStore.getState().upsertRoleRequest(request);
+    const roleDecision = (payload: { requestId: string; decision: "approved" | "rejected" }) => {
+      useAppStore.getState().resolveRoleRequest(payload.requestId);
+    };
 
     socket.on("room:state", update);
     socket.on("room:error", error);
@@ -192,6 +202,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
     socket.on("timer:tick", tick);
     socket.on("ai:status", ai);
     socket.on("report:ready", reportReady);
+    socket.on("reaction:show", reaction);
+    socket.on("vote:reveal", reveal);
+    socket.on("room:profileRequestPending", roleRequestPending);
+    socket.on("room:profileDecision", roleDecision);
     socket.on("connect", () => {
       joinedRef.current = true;
       useAppStore.getState().setConnectionStatus("connected");
@@ -206,6 +220,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
       socket.off("timer:tick", tick);
       socket.off("ai:status", ai);
       socket.off("report:ready", reportReady);
+      socket.off("reaction:show", reaction);
+      socket.off("vote:reveal", reveal);
+      socket.off("room:profileRequestPending", roleRequestPending);
+      socket.off("room:profileDecision", roleDecision);
     };
   }, [clearState, mode, routeCode, setState, setAiStatus]);
 

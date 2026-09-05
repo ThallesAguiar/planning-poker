@@ -112,6 +112,7 @@ export type RoomState = {
     remainingSeconds: number | null;
     timerType?: TimerType | null;
     messages: ChatMessage[];
+    roleRequests: RoomRoleChangeRequest[];
 };
 export type RoomErrorPayload = {
     code: RoomErrorCode;

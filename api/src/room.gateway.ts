@@ -14,7 +14,7 @@ import { RoomService } from './room.service.js';
 import { defaultConfig } from './realtime/room.types.js';
 import type { InternalRoomState } from './realtime/room.types.js';
 import type { PresenceChange } from './realtime/presence.service.js';
-import type { RoomConfig, ParticipantRole, ChatMessage, VoteValue, RoomErrorCode } from '@planning-poker/shared-types';
+import type { RoomConfig, ParticipantRole, ChatMessage, VoteValue, RoomErrorCode, RoomRoleChangeRequest } from '@planning-poker/shared-types';
 
 type Client = Socket;
 
@@ -211,6 +211,7 @@ export class RoomGateway {
     }
     try {
       const request = await this.rooms.requestRoleChange(state.dbRoomId, participant.id, payload.role);
+      state.roleRequests = [...(state.roleRequests ?? []), { ...request, status: request.status as RoomRoleChangeRequest['status'] }].filter((item) => item.status === 'pending');
       this.server.to(state.roomId).emit('room:profileRequestPending', request);
     } catch {
       this.emitError(client, 'INVALID_ROLE_REQUEST');
@@ -233,6 +234,7 @@ export class RoomGateway {
           this.emitParticipantUpdate(state, { participant: {...participant}, reason: 'role' });
         }
       }
+      state.roleRequests = (state.roleRequests ?? []).filter((item) => item.id !== decision.requestId);
       this.server.to(state.roomId).emit('room:profileDecision', { requestId: decision.requestId, decision: decision.decision, decidedAt: decision.decidedAt });
       this.broadcastRoom(state);
     } catch {
@@ -621,6 +623,7 @@ export class RoomGateway {
           createdAt: item.createdAt.toISOString(),
         };
       }),
+      roleRequests: await this.getPendingRoleRequests(room.id),
     };
     const activeStory = room.stories.find((item) => item.status === 'em_votacao' || item.status === 'em_discussao');
     if (activeStory) {
@@ -634,5 +637,23 @@ export class RoomGateway {
     }
     this.states.set(roomKey, state);
     return state;
+  }
+
+  private async getPendingRoleRequests(roomId: string) {
+    const requests = await this.prisma.roomRoleChangeRequest.findMany({
+      where: { roomId, status: 'pending' },
+      include: { requester: { include: { user: true } } },
+      orderBy: { createdAt: 'asc' as const },
+    });
+    return requests.map((request) => ({
+      id: request.id,
+      requesterParticipantId: request.requesterParticipantId,
+      requesterName: request.requester.roomDisplayName ?? request.requester.user?.name,
+      currentRole: request.currentRole,
+      requestedRole: request.requestedRole,
+      status: request.status as RoomRoleChangeRequest['status'],
+      createdAt: request.createdAt.toISOString(),
+      decidedAt: null,
+    }));
   }
 }

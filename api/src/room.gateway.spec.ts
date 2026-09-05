@@ -82,6 +82,11 @@ create: vi.fn(async (args: any) => {
     vote: { upsert: vi.fn(async () => ({})), updateMany: vi.fn(async () => ({ count: 0 })) },
     chatMessage: { create: vi.fn(async (args: any) => ({ id: 'm1', createdAt: new Date(), ...args.data })) },
     sprintReport: { create: vi.fn(async (args: any) => ({ id: 'rep1', ...args.data })) },
+    roomRoleChangeRequest: {
+      findMany: vi.fn(async () => []),
+      create: vi.fn(async (args: any) => ({ id: `rr${pidCounter++}`, status: 'pending', createdAt: new Date(), decidedAt: null, ...args.data })),
+      update: vi.fn(async (args: any) => Object.assign({ id: args.where.id }, args.data)),
+    },
   };
 
   const serverEvents: { roomId: string; event: string; payload: any }[] = [];
