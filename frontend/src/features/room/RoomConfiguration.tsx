@@ -17,11 +17,11 @@ function NumberField({ label, value, suffix, onChange }: { label: string; value:
   );
 }
 
-function ToggleField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (next: boolean) => void }) {
+function ToggleField({ label, checked, onChange, disabled }: { label: string; checked: boolean; onChange: (next: boolean) => void; disabled?: boolean }) {
   return (
     <label className="settings-toggle config-toggle">
       {label}
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} disabled={disabled} />
     </label>
   );
 }
@@ -34,6 +34,7 @@ export function RoomConfiguration({ onClose }: { onClose: () => void }) {
   const [discussao, setDiscussao] = useState(config?.tempoDiscussaoSegundos ?? 300);
   const [maxPessoas, setMaxPessoas] = useState(config?.maxParticipantes ?? 12);
   const [ia, setIa] = useState(config?.permiteParticipantesIA ?? false);
+  const [discute, setDiscute] = useState(config?.iaDiscute ?? false);
   const [anonimo, setAnonimo] = useState(config?.votoAnonimo ?? false);
   const [automatic, setAutomatic] = useState(config?.revelacaoAutomatica ?? false);
   const [criterio, setCriterio] = useState(config?.criterioConsenso ?? 'decisao_po');
@@ -44,6 +45,7 @@ export function RoomConfiguration({ onClose }: { onClose: () => void }) {
     setDiscussao(config.tempoDiscussaoSegundos);
     setMaxPessoas(config.maxParticipantes);
     setIa(config.permiteParticipantesIA);
+    setDiscute(config.iaDiscute ?? false);
     setAnonimo(config.votoAnonimo);
     setAutomatic(config.revelacaoAutomatica);
     setCriterio(config.criterioConsenso);
@@ -60,6 +62,7 @@ export function RoomConfiguration({ onClose }: { onClose: () => void }) {
     if (discussao !== config?.tempoDiscussaoSegundos) patch.tempoDiscussaoSegundos = discussao;
     if (maxPessoas !== config?.maxParticipantes) patch.maxParticipantes = maxPessoas;
     if (ia !== config?.permiteParticipantesIA) patch.permiteParticipantesIA = ia;
+    if (discute !== (config?.iaDiscute ?? false)) patch.iaDiscute = discute;
     if (anonimo !== config?.votoAnonimo) patch.votoAnonimo = anonimo;
     if (automatic !== config?.revelacaoAutomatica) patch.revelacaoAutomatica = automatic;
     if (criterio !== config?.criterioConsenso) patch.criterioConsenso = criterio;
@@ -90,6 +93,7 @@ export function RoomConfiguration({ onClose }: { onClose: () => void }) {
           </select>
         </label>
         <ToggleField label="Participante IA" checked={ia} onChange={setIa} />
+        <ToggleField label="IA discute" checked={discute} onChange={setDiscute} disabled={locked || !ia} />
         <ToggleField label="Voto anonimo" checked={anonimo} onChange={setAnonimo} />
         <ToggleField label="Revelacao automatica" checked={automatic} onChange={setAutomatic} />
         <button className="primary" type="button" onClick={save} disabled={locked}>

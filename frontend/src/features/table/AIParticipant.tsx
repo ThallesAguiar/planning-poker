@@ -1,22 +1,37 @@
 import type { AiStatus } from '../../stores/app-store';
 
-type Props = { enabled: boolean; status: AiStatus; onRequest: () => void };
+type Props = { enabled: boolean; status: AiStatus; onRequest: () => void; mode?: 'vote' | 'discuss' };
 
-const LABELS: Record<AiStatus, string> = {
+const VOTE_LABELS: Record<AiStatus, string> = {
   idle: 'Pedir voto da IA',
   voting: 'IA votando...',
   voted: 'IA votou',
+  discussing: '',
+  discussed: '',
   unavailable: 'IA indisponível',
   error: 'IA falhou',
 };
 
-export function AIParticipant({ enabled, status, onRequest }: Props) {
+const DISCUSS_LABELS: Record<AiStatus, string> = {
+  idle: '🤖 Resumir & sugerir',
+  voting: '',
+  voted: '',
+  discussing: 'IA analisando...',
+  discussed: 'IA analisou',
+  unavailable: 'IA indisponível',
+  error: 'IA falhou',
+};
+
+export function AIParticipant({ enabled, status, onRequest, mode = 'vote' }: Props) {
   if (!enabled) return null;
-  const busy = status === 'voting' || status === 'voted';
+  const labels = mode === 'discuss' ? DISCUSS_LABELS : VOTE_LABELS;
+  const busy = mode === 'discuss'
+    ? status === 'discussing' || status === 'discussed'
+    : status === 'voting' || status === 'voted';
   return (
     <div className="ai-participant">
       <button className="secondary" type="button" onClick={onRequest} disabled={busy}>
-        🤖 {LABELS[status] ?? 'IA'}
+        {labels[status] ?? 'IA'}
       </button>
       {(status === 'unavailable' || status === 'error') && (
         <small>

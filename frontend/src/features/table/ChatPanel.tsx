@@ -31,7 +31,7 @@ export function ChatPanel() {
               className={`message ${item.type}`}
               key={item.id}
             >
-              <b>{item.author}</b>
+              <b>{item.type === 'ia' ? `🤖 ${item.author}` : item.author}</b>
               <small>{item.role}</small>
               <p>{item.text}</p>
             </motion.div>

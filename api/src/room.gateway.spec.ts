@@ -107,11 +107,12 @@ create: vi.fn(async (args: any) => {
   const round = new RoundService(prisma as any, new TimerService());
   const presence = new PresenceService(prisma as any);
   const rooms = new RoomService(prisma as any, sessions);
+  const ai = { castVote: vi.fn(), pullDiscussion: vi.fn(), summarize: vi.fn() };
   const gateway = new RoomGateway(
     prisma as any,
     new AuthorizationService(sessions),
     sessions,
-    { castVote: vi.fn() } as any,
+    ai as any,
     roomStates,
     round,
     presence,
@@ -124,7 +125,7 @@ create: vi.fn(async (args: any) => {
     broadcast: (state) => (gateway as any).broadcastRoom(state),
   });
 
-  return { prisma, gateway, server, sessions, storyId: () => stories[0]?.id, newClient };
+  return { prisma, gateway, server, sessions, storyId: () => stories[0]?.id, newClient, ai };
 }
 
 type ClientContext = {
@@ -293,6 +294,29 @@ it('same session reconnection reuses the participant and disconnects the stale s
     expect(latestRoomState(h)?.participants.length).toBe(1);
     expect(first.connected).toBe(false);
     expect(issued.token).toBeDefined();
+  });
+
+  it('ai:summarize posts an ia message and emits ai:status discussed', async () => {
+    const po = newClient('sock-po');
+    const dev = newClient('sock-dev');
+    await joinRoom(h, po);
+    await joinRoom(h, dev);
+    await h.gateway.createStory(po.client as any, { title: 'H', description: '' });
+    const storyId = h.storyId();
+    await h.gateway.present(po.client as any, { storyId });
+    await h.gateway.vote(dev.client as any, { storyId, value: 3 });
+    await h.gateway.vote(po.client as any, { storyId, value: 8 });
+    await h.gateway.reveal(po.client as any);
+    expect(latestRoomState(h)?.phase).toBe('discussao');
+
+    h.ai.summarize.mockResolvedValue({ participantId: 'ai-participant', participantName: 'Agente IA', message: 'resumo', suggestedNextStep: 'revotar' });
+    await h.gateway.summarize(po.client as any);
+    const iaMessage = latestRoomState(h)?.messages.find((m: any) => m.type === 'ia');
+    expect(iaMessage).toBeDefined();
+    expect(iaMessage.author).toBe('Agente IA');
+    expect(iaMessage.text).toContain('Próximo passo sugerido');
+    const status = h.server.serverEvents.find((e) => e.event === 'ai:status');
+    expect(status?.payload.status).toBe('discussed');
   });
 
   it('configure validates partial config and persists it', async () => {

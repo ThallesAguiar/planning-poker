@@ -186,6 +186,34 @@ describe('RoundService', () => {
     expect(prisma.story.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'em_discussao' } }));
   });
 
+  it('revealState calls onDivergence when votes diverge', async () => {
+    const prisma = prismaMock();
+    const round = new RoundService(prisma as any, new TimerService());
+    const onDivergence = vi.fn();
+    round.setEmitter({ to: () => undefined, broadcast: () => undefined, onDivergence });
+    const state = makeState();
+    await round.present(state, 's1');
+    await round.castVote(state, state.participants[0], 's1', 3);
+    await round.castVote(state, state.participants[1], 's1', 8);
+    await round.forceReveal(state);
+    expect(state.phase).toBe('discussao');
+    expect(onDivergence).toHaveBeenCalledWith(state);
+  });
+
+  it('does not call onDivergence on unanimous reveal', async () => {
+    const prisma = prismaMock();
+    const round = new RoundService(prisma as any, new TimerService());
+    const onDivergence = vi.fn();
+    round.setEmitter({ to: () => undefined, broadcast: () => undefined, onDivergence });
+    const state = makeState();
+    await round.present(state, 's1');
+    await round.castVote(state, state.participants[0], 's1', 5);
+    await round.castVote(state, state.participants[1], 's1', 5);
+    await round.forceReveal(state);
+    expect(state.phase).toBe('revelada');
+    expect(onDivergence).not.toHaveBeenCalled();
+  });
+
   it('revote after discussion ends discussion and stacks a new round', async () => {
     const prisma = prismaMock();
     const round = new RoundService(prisma as any, new TimerService());

@@ -179,7 +179,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
     const participantUpdate = (payload: any) => {
       useAppStore.getState().patchParticipant(payload.participant);
     };
-    const ai = (next: { status: "voted" | "unavailable" | "error" | "idle" | "voting" }) =>
+    const ai = (next: { status: "voted" | "discussing" | "discussed" | "unavailable" | "error" | "idle" | "voting" }) =>
       useAppStore.getState().setAiStatus(next.status);
     const reportReady = (payload: { reportId: string }) => {
       if (mode === "room") navigate(`/report/${payload.reportId}`);

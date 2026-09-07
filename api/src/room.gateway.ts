@@ -69,6 +69,7 @@ export class RoomGateway {
     this.round.setEmitter({
       to: (roomId, event, payload) => this.server.to(roomId).emit(event, payload),
       broadcast: (state) => this.broadcastRoom(state),
+      onDivergence: (state) => void this.autoPull(state),
     });
   }
 
@@ -286,6 +287,7 @@ export class RoomGateway {
       patch.deckValues = source.deckValues;
     }
     if (source.permiteParticipantesIA !== undefined) patch.permiteParticipantesIA = Boolean(source.permiteParticipantesIA);
+    if (source.iaDiscute !== undefined) patch.iaDiscute = Boolean(source.iaDiscute);
     if (source.votoAnonimo !== undefined) patch.votoAnonimo = Boolean(source.votoAnonimo);
     if (source.revelacaoAutomatica !== undefined) patch.revelacaoAutomatica = Boolean(source.revelacaoAutomatica);
     if (source.criterioConsenso !== undefined) {
@@ -479,6 +481,32 @@ export class RoomGateway {
     }
   }
 
+  @SubscribeMessage('ai:summarize')
+  async summarize(@ConnectedSocket() client: Client) {
+    const state = this.authorized(client, 'PO');
+    if (!state) {
+      this.emitError(client, 'FORBIDDEN');
+      return;
+    }
+    if (state.phase !== 'discussao' || !state.currentStoryId || !state.roundId) {
+      this.emitError(client, 'INVALID_PHASE');
+      return;
+    }
+    try {
+      const votes = state.votes.map((vote) => ({ participantName: vote.participantName, value: String(vote.value), justification: vote.justification ?? null }));
+      const result = await this.ai.summarize(state.dbRoomId, state.currentStoryId, state.roundId, votes);
+      const text = result.suggestedNextStep ? `${result.message}\n\nPróximo passo sugerido: ${result.suggestedNextStep}` : result.message;
+      const chat = await this.prisma.chatMessage.create({ data: { roomId: state.dbRoomId, storyId: state.currentStoryId, participantId: result.participantId, text, type: 'ia' } });
+      state.messages.push({ id: chat.id, author: result.participantName, role: 'IA_Agente', text: chat.text, type: 'ia', createdAt: chat.createdAt.toISOString() });
+      this.broadcastRoom(state);
+      this.server.to(state.roomId).emit('ai:status', { status: 'discussed' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'AI_UNAVAILABLE';
+      const status: 'unavailable' | 'error' = message === 'AI_UNAVAILABLE' ? 'unavailable' : 'error';
+      this.server.to(state.roomId).emit('ai:status', { status, message });
+    }
+  }
+
   @SubscribeMessage('chat:message')
   async chat(@ConnectedSocket() client: Client, @MessageBody() payload: { text: string; type?: string }) {
     const state = this.stateFor(client);
@@ -516,6 +544,24 @@ export class RoomGateway {
     const publicState = this.round.toPublicState(state);
     void this.roomStates.save(state.roomId, { ...state, timer: undefined });
     this.server.to(state.roomId).emit('room:state', publicState);
+  }
+
+  private async autoPull(state: InternalRoomState) {
+    if (state.phase !== 'discussao') return;
+    if (!state.config.iaDiscute || !state.config.permiteParticipantesIA) return;
+    if (!state.currentStoryId || !state.roundId) return;
+    if (!state.participants.some((participant) => participant.isAI)) return;
+    try {
+      const votes = state.votes.map((vote) => ({ participantName: vote.participantName, value: String(vote.value), justification: vote.justification ?? null }));
+      const result = await this.ai.pullDiscussion(state.dbRoomId, state.currentStoryId, state.roundId, votes);
+      if (!result) return;
+      const chat = await this.prisma.chatMessage.create({ data: { roomId: state.dbRoomId, storyId: state.currentStoryId, participantId: result.participantId, text: result.message, type: 'ia' } });
+      state.messages.push({ id: chat.id, author: result.participantName, role: 'IA_Agente', text: chat.text, type: 'ia', createdAt: chat.createdAt.toISOString() });
+      this.broadcastRoom(state);
+    } catch (error) {
+      // Silencioso: a puxada e fire-and-forget, nao quebra a revelacao nem bloqueia.
+      console.error('[ai] autoPull failed', error);
+    }
   }
 
   private emitError(client: Client, code: RoomErrorCode) {
@@ -580,6 +626,7 @@ export class RoomGateway {
           tempoReflexaoSegundos: room.config.tempoReflexaoSegundos,
           tempoDiscussaoSegundos: room.config.tempoDiscussaoSegundos,
           permiteParticipantesIA: room.config.permiteParticipantesIA,
+          iaDiscute: room.config.iaDiscute,
           maxParticipantes: room.config.maxParticipantes,
           votoAnonimo: room.config.votoAnonimo,
           revelacaoAutomatica: room.config.revelacaoAutomatica,

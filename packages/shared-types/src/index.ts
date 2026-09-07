@@ -19,6 +19,7 @@ export type RoomConfig = {
   tempoReflexaoSegundos: number;
   tempoDiscussaoSegundos: number;
   permiteParticipantesIA: boolean;
+  iaDiscute: boolean;
   maxParticipantes: number;
   votoAnonimo: boolean;
   revelacaoAutomatica: boolean;
@@ -34,7 +35,7 @@ export type Participant = { id: string; userId?: string; name: string; avatar: s
 export type RoomProfileUpdate = { name?: string; avatar?: string };
 export type RoomRoleChangeRequest = { id: string; requesterParticipantId: string; requesterName?: string; currentRole: ParticipantRole; requestedRole: ParticipantRole; status: 'pending' | 'approved' | 'rejected' | 'cancelled'; createdAt: string; decidedAt?: string | null };
 export type Story = { id: string; title: string; description: string; order: number; status: StoryStatus; finalValue?: VoteValue | null; criterion?: string | null; rounds: number };
-export type ChatMessage = { id: string; author: string; role: ParticipantRole; text: string; type: 'commentario' | 'justificativa' | 'sistema'; createdAt: string };
+export type ChatMessage = { id: string; author: string; role: ParticipantRole; text: string; type: 'commentario' | 'justificativa' | 'sistema' | 'ia'; createdAt: string };
 export type VoteReveal = { participantId: string; participantName: string; value: VoteValue; justification?: string | null };
 export type RoomState = { roomId: string; name: string; code: string; status: RoomStatus; visibility: RoomVisibility; ownerId?: string; config: RoomConfig; participants: Participant[]; stories: Story[]; currentStoryId?: string; roundId?: string; phase: RoomPhase; votes: VoteReveal[]; remainingSeconds: number | null; timerType?: TimerType | null; messages: ChatMessage[]; roleRequests: RoomRoleChangeRequest[] };
 export type RoomErrorPayload = { code: RoomErrorCode; message: string };
@@ -66,6 +67,7 @@ export type ClientToServerEvents = {
   'reaction:send': (payload: { value: string }) => void;
   'report:generate': (payload?: { sections?: ReportOptions }) => void;
   'ai:requestVote': () => void;
+  'ai:summarize': () => void;
 };
 
 export type ServerToClientEvents = {
@@ -83,5 +85,5 @@ export type ServerToClientEvents = {
   'reaction:show': (payload: { value: string; participantId: string }) => void;
   'discussion:end': (payload: { storyId?: string; reason?: 'timeout' | 'manual' | 'revote' }) => void;
   'report:ready': (payload: { reportId: string; url?: string }) => void;
-  'ai:status': (payload: { status: 'idle' | 'voting' | 'voted' | 'unavailable' | 'error'; message?: string }) => void;
+  'ai:status': (payload: { status: 'idle' | 'voting' | 'voted' | 'discussing' | 'discussed' | 'unavailable' | 'error'; message?: string }) => void;
 };

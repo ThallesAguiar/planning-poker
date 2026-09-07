@@ -64,6 +64,7 @@ model RoomConfig {
   tempoReflexaoSegundos Int @default(120)
   tempoDiscussaoSegundos Int @default(300)
   permiteParticipantesIA Boolean @default(false)
+  iaDiscute Boolean @default(false)
   maxParticipantes Int @default(12)
   papeisPermitidos Json
   votoAnonimo Boolean @default(false)

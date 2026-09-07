@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAppStore } from '../../stores/app-store';
 import { AIParticipant } from './AIParticipant';
-import { finalizeStory, forceReveal, requestAiVote, revote, sendReaction, skipStory, useSelf } from './room-actions';
+import { finalizeStory, forceReveal, requestAiSummarize, requestAiVote, revote, sendReaction, skipStory, useSelf } from './room-actions';
 import type { ConsensusCriterion } from '@planning-poker/shared-types';
 
 const REACTIONS = ['👍', '🤔', '😅', '🔥'] as const;
@@ -33,6 +33,7 @@ export function Felt() {
   const revealed = phase === 'revelada' || phase === 'discussao';
   const divergent = phase === 'discussao';
   const aiEnabled = state?.config.permiteParticipantesIA ?? false;
+  const aiDiscuss = state?.config.iaDiscute ?? false;
   const finalValues = Array.from(new Set(state?.votes.map((vote) => String(vote.value)) ?? []));
   const [finalValue, setFinalValue] = useState<string>(finalValues[0] ?? '');
   const [criterion, setCriterion] = useState<ConsensusCriterion>(state?.config.criterioConsenso ?? 'decisao_po');
@@ -251,6 +252,9 @@ export function Felt() {
             )}
             {aiEnabled && phase === 'votacao' && (
               <AIParticipant enabled={aiEnabled} status={aiStatus} onRequest={requestAiVote} />
+            )}
+            {aiEnabled && aiDiscuss && phase === 'discussao' && (
+              <AIParticipant mode="discuss" enabled={aiEnabled} status={aiStatus} onRequest={requestAiSummarize} />
             )}
           </>
         )}

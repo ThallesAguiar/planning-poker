@@ -50,6 +50,7 @@ export const defaultConfig: RoomConfig = {
   tempoReflexaoSegundos: 120,
   tempoDiscussaoSegundos: 300,
   permiteParticipantesIA: false,
+  iaDiscute: false,
   maxParticipantes: 12,
   votoAnonimo: false,
   revelacaoAutomatica: false,
@@ -60,6 +61,7 @@ export const defaultConfig: RoomConfig = {
 export type RoundEmitter = {
   to(roomId: string, event: string, payload: unknown): void;
   broadcast(state: InternalRoomState): void;
+  onDivergence?(state: InternalRoomState): void;
 };
 
 export type { RoomConfig, RoomStatus, RoomVisibility, ParticipantStatus, Story, ChatMessage, VoteReveal, RoomPhase, TimerType, VoteValue };

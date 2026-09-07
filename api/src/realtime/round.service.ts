@@ -222,6 +222,7 @@ export class RoundService {
       this.startTimer(state, 'discussao', state.config.tempoDiscussaoSegundos);
       this.emitter.to(state.roomId, 'discussion:start', { remainingSeconds: state.config.tempoDiscussaoSegundos });
       this.emitter.broadcast(state);
+      this.emitter.onDivergence?.(state);
     }
   }
 

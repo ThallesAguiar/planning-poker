@@ -3,7 +3,7 @@ import type { RoomRoleChangeRequest, RoomState } from '@planning-poker/shared-ty
 import type { AccountRoom, AuthUser } from '../lib/auth';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
-export type AiStatus = 'idle' | 'voting' | 'voted' | 'unavailable' | 'error';
+export type AiStatus = 'idle' | 'voting' | 'voted' | 'discussing' | 'discussed' | 'unavailable' | 'error';
 export type RoomError = { code: string; message: string } | null;
 export type FloatingReaction = {
   id: string;

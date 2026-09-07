@@ -33,6 +33,12 @@ export function requestAiVote() {
   socket.emit('ai:requestVote');
 }
 
+export function requestAiSummarize() {
+  useAppStore.getState().setAiStatus('discussing');
+  useAppStore.getState().setRoomError(null);
+  socket.emit('ai:summarize');
+}
+
 export function createStory(title: string, description: string) {
   useAppStore.getState().setRoomError(null);
   socket.emit('story:create', { title, description });

@@ -17,6 +17,7 @@ export type RoomConfig = {
     tempoReflexaoSegundos: number;
     tempoDiscussaoSegundos: number;
     permiteParticipantesIA: boolean;
+    iaDiscute: boolean;
     maxParticipantes: number;
     votoAnonimo: boolean;
     revelacaoAutomatica: boolean;
@@ -87,7 +88,7 @@ export type ChatMessage = {
     author: string;
     role: ParticipantRole;
     text: string;
-    type: 'commentario' | 'justificativa' | 'sistema';
+    type: 'commentario' | 'justificativa' | 'sistema' | 'ia';
     createdAt: string;
 };
 export type VoteReveal = {
@@ -272,6 +273,7 @@ export type ClientToServerEvents = {
         sections?: ReportOptions;
     }) => void;
     'ai:requestVote': () => void;
+    'ai:summarize': () => void;
 };
 export type ServerToClientEvents = {
     'room:state': (state: RoomState) => void;
@@ -324,7 +326,7 @@ export type ServerToClientEvents = {
         url?: string;
     }) => void;
     'ai:status': (payload: {
-        status: 'idle' | 'voting' | 'voted' | 'unavailable' | 'error';
+        status: 'idle' | 'voting' | 'voted' | 'discussing' | 'discussed' | 'unavailable' | 'error';
         message?: string;
     }) => void;
 };
