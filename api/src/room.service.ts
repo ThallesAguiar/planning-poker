@@ -5,15 +5,55 @@ import { PrismaService } from './prisma.service.js';
 import { SessionService } from './auth/session.service.js';
 
 const deck = [1, 2, 3, 5, 8, 13, 20, 40, 100, 'café', '?'];
+// Mesma lista de room.gateway.ts (ALLOWED_CONSENSUS) — manter em sincronia.
+const ALLOWED_CONSENSUS = ['decisao_po', 'unanime', 'media', 'mediana'];
+
+// Whitelist de config aceita como "padrao de criacao" de sala (POST /rooms).
+// Regras espelham o configure() do gateway: numericos 1..3600, maxParticipantes 1..50,
+// booleans coercidos, deckValues aceita number|string (para deck T-shirt).
+type NewRoomConfigDefaults = {
+  tempoReflexaoSegundos?: number;
+  tempoDiscussaoSegundos?: number;
+  maxParticipantes?: number;
+  permiteParticipantesIA?: boolean;
+  iaDiscute?: boolean;
+  votoAnonimo?: boolean;
+  revelacaoAutomatica?: boolean;
+  criterioConsenso?: string;
+  deckType?: string;
+  deckValues?: Array<number | string>;
+};
+
+function sanitizeRoomConfigDefaults(raw?: Record<string, unknown>): NewRoomConfigDefaults {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: NewRoomConfigDefaults = {};
+  const numberKeys = ['tempoReflexaoSegundos', 'tempoDiscussaoSegundos'] as const;
+  for (const key of numberKeys) {
+    const value = raw[key];
+    if (Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 3600) out[key] = value as number;
+  }
+  if (Number.isInteger(raw.maxParticipantes) && (raw.maxParticipantes as number) >= 1 && (raw.maxParticipantes as number) <= 50) out.maxParticipantes = raw.maxParticipantes as number;
+  const booleanKeys = ['permiteParticipantesIA', 'iaDiscute', 'votoAnonimo', 'revelacaoAutomatica'] as const;
+  for (const key of booleanKeys) {
+    if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean;
+  }
+  if (typeof raw.deckType === 'string' && raw.deckType) out.deckType = raw.deckType;
+  if (ALLOWED_CONSENSUS.includes(raw.criterioConsenso as string)) out.criterioConsenso = raw.criterioConsenso as string;
+  if (Array.isArray(raw.deckValues) && raw.deckValues.length > 0 && raw.deckValues.every((value) => typeof value === 'number' || typeof value === 'string')) {
+    out.deckValues = raw.deckValues as Array<number | string>;
+  }
+  return out;
+}
 
 @Injectable()
 export class RoomService {
   constructor(private readonly prisma: PrismaService, private readonly sessions: SessionService) {}
-  async create(name: string, visibility: 'PUBLIC' | 'PRIVATE' = 'PUBLIC', password?: string) {
+  async create(name: string, visibility: 'PUBLIC' | 'PRIVATE' = 'PUBLIC', password?: string, config?: Record<string, unknown>) {
     if (visibility !== 'PUBLIC' && visibility !== 'PRIVATE') throw new BadRequestException('Invalid room visibility');
     if (visibility === 'PRIVATE' && (!password || password.length < 4)) throw new BadRequestException('Private rooms require a password of at least 4 characters');
     const room = await this.prisma.room.create({ data: { name, inviteCode: randomBytes(3).toString('hex').toUpperCase(), ownerId: 'pending', visibility, passwordHash: visibility === 'PRIVATE' ? await bcrypt.hash(password!, 12) : null } });
-    await this.prisma.roomConfig.create({ data: { roomId: room.id, deckType: 'fibonacci', deckValues: deck, papeisPermitidos: ['PO', 'Dev', 'QA', 'ScrumMaster', 'Observador', 'IA_Agente'] } });
+    const defaults = sanitizeRoomConfigDefaults(config);
+    await this.prisma.roomConfig.create({ data: { roomId: room.id, ...defaults, papeisPermitidos: ['PO', 'Dev', 'QA', 'ScrumMaster', 'Observador', 'IA_Agente'], deckType: defaults.deckType ?? 'fibonacci', deckValues: defaults.deckValues ?? deck } });
     return { id: room.id, code: room.inviteCode, name: room.name, visibility: room.visibility };
   }
   async get(idOrCode: string) {
@@ -26,7 +66,7 @@ export class RoomService {
   async mine(userId: string) {
     const memberships = await this.prisma.roomParticipant.findMany({
       where: { userId },
-      include: { room: true },
+      include: { room: { include: { reports: { orderBy: { generatedAt: 'desc' }, take: 1 } } } },
       orderBy: { lastSeenAt: 'desc' },
     });
     return memberships.map((membership) => ({
@@ -40,6 +80,8 @@ export class RoomService {
       lastSeenAt: membership.lastSeenAt.toISOString(),
       participantId: membership.id,
       isOwner: membership.room.ownerId === membership.id,
+      reportId: membership.room.reports[0]?.id ?? null,
+      reportGeneratedAt: membership.room.reports[0]?.generatedAt.toISOString() ?? null,
     }));
   }
 

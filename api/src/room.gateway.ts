@@ -540,6 +540,27 @@ export class RoomGateway {
     this.server.to(state.roomId).emit('room:participantUpdate', { participant: change.participant, reason: change.reason, ownerId: state.ownerId });
   }
 
+  /** Propaga a atualizacao de nome/avatar da conta para uma sala ativa (estado em memoria + realtime). */
+  publishParticipantProfile(roomKey: string, participantId: string, patch: { name?: string; avatar?: string }) {
+    const state = this.states.get(roomKey);
+    if (state) {
+      const item = state.participants.find((participant) => participant.id === participantId);
+      if (item) {
+        if (patch.name !== undefined) item.name = patch.name;
+        if (patch.avatar !== undefined) item.avatar = patch.avatar;
+      }
+    }
+    this.server.to(roomKey).emit('room:participantUpdate', {
+      participant: {
+        id: participantId,
+        ...(patch.name !== undefined ? { name: patch.name } : {}),
+        ...(patch.avatar !== undefined ? { avatar: patch.avatar } : {}),
+      },
+      reason: 'status' as const,
+      ownerId: state?.ownerId ?? '',
+    });
+  }
+
   private broadcastRoom(state: InternalRoomState) {
     const publicState = this.round.toPublicState(state);
     void this.roomStates.save(state.roomId, { ...state, timer: undefined });

@@ -6,7 +6,7 @@ import { AuthorizationService } from './auth/authorization.service.js';
 @Controller('rooms')
 export class RoomController {
   constructor(private readonly rooms: RoomService, private readonly authorization: AuthorizationService) {}
-  @Post() create(@Body() body: CreateRoomDto) { return this.rooms.create(body.name ?? 'Planning Poker', body.visibility ?? 'PUBLIC', body.password); }
+  @Post() create(@Body() body: CreateRoomDto) { return this.rooms.create(body.name ?? 'Planning Poker', body.visibility ?? 'PUBLIC', body.password, body.config); }
   @Get('mine') mine(@Headers('authorization') authorization?: string) {
     const account = this.authorization.accountFromAuthorization(authorization);
     if (!account) throw new UnauthorizedException('UNAUTHENTICATED');

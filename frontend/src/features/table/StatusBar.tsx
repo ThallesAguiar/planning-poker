@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../stores/app-store';
 import { useSelf } from './room-actions';
 
@@ -16,8 +17,10 @@ function formatSeconds(seconds: number) {
 }
 
 export function StatusBar({ onLogout, onOpenSettings }: { onLogout: () => void; onOpenSettings: () => void }) {
+  const navigate = useNavigate();
   const state = useAppStore((s) => s.state);
   const connectionStatus = useAppStore((s) => s.connectionStatus);
+  const account = useAppStore((s) => s.account);
   const self = useSelf().self;
 
   return (
@@ -46,6 +49,11 @@ export function StatusBar({ onLogout, onOpenSettings }: { onLogout: () => void; 
         <button type="button" onClick={onOpenSettings} title="Configuracoes da sala">
           ⚙
         </button>
+        {account && (
+          <button type="button" onClick={() => navigate('/profile')}>
+            Perfil
+          </button>
+        )}
         <button type="button" onClick={onLogout}>
           Sair
         </button>

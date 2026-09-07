@@ -2,13 +2,18 @@ import { BadRequestException, ConflictException, Injectable, UnauthorizedExcepti
 import bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma.service.js';
 import { SessionService } from './session.service.js';
+import { RoomGateway } from '../room.gateway.js';
 import type { AuthResponse, SafeAuthUser } from './auth.dto.js';
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService, private readonly sessions: SessionService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sessions: SessionService,
+    private readonly roomGateway: RoomGateway,
+  ) {}
 
   async register(input: { email: string; password: string; name: string; avatar?: string; claimGuestSessionToken?: string }): Promise<AuthResponse> {
     const email = normalizeEmail(input.email);
@@ -47,6 +52,37 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: account.userId } });
     if (!user || user.isGuest || !user.email) throw new UnauthorizedException('UNAUTHENTICATED');
     return this.safeUser(user);
+  }
+
+  async updateProfile(token: string, input: { name?: string; avatar?: string }): Promise<SafeAuthUser> {
+    const account = this.sessions.verifyAccount(token);
+    const name = input.name?.trim();
+    if (input.name !== undefined && !name) throw new BadRequestException('INVALID_INPUT');
+    const user = await this.prisma.user.update({
+      where: { id: account.userId },
+      data: { ...(name !== undefined ? { name } : {}), ...(input.avatar !== undefined ? { avatarUrl: input.avatar } : {}) },
+    });
+    if (!user || user.isGuest || !user.email) throw new UnauthorizedException('UNAUTHENTICATED');
+    if (name !== undefined || input.avatar !== undefined) {
+      await this.syncActiveRooms(user.id, { name, avatar: input.avatar });
+    }
+    return this.safeUser(user);
+  }
+
+  /** Propaga nome/avatar da conta para os participantes ativos do usuario e notifica as salas em tempo real. */
+  private async syncActiveRooms(userId: string, patch: { name?: string; avatar?: string }) {
+    const memberships = await this.prisma.roomParticipant.findMany({
+      where: { userId, status: 'ativo' },
+      include: { room: { select: { inviteCode: true } } },
+    });
+    if (memberships.length === 0) return;
+    await this.prisma.roomParticipant.updateMany({
+      where: { userId, status: 'ativo' },
+      data: { ...(patch.name !== undefined ? { roomDisplayName: patch.name } : {}), ...(patch.avatar !== undefined ? { roomAvatarUrl: patch.avatar } : {}) },
+    });
+    for (const membership of memberships) {
+      this.roomGateway.publishParticipantProfile(membership.room.inviteCode, membership.id, patch);
+    }
   }
 
   logout(token: string) {

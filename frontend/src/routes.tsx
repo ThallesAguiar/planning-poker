@@ -11,7 +11,7 @@ export function AppRoutes() {
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/settings" element={<SettingsPage />} />
       <Route path="/room/:code" element={<App mode="room" />} />
-      <Route path="/report/:id" element={<ReportPage />} />
+      <Route path="/report/:id/:roomCode?" element={<ReportPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

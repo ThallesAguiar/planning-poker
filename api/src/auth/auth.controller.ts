@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Headers, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Patch, Post, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
-import { LoginDto, RegisterDto } from './auth.dto.js';
+import { LoginDto, RegisterDto, UpdateProfileDto } from './auth.dto.js';
 
 function bearer(value?: string) {
   const [scheme, token] = value?.split(' ') ?? [];
@@ -30,5 +30,10 @@ export class AuthController {
   @Get('me')
   me(@Headers('authorization') authorization?: string) {
     return this.auth.me(bearer(authorization));
+  }
+
+  @Patch('me')
+  updateMe(@Body() body: UpdateProfileDto, @Headers('authorization') authorization?: string) {
+    return this.auth.updateProfile(bearer(authorization), body);
   }
 }

@@ -51,10 +51,10 @@ function StoryInsights({ insights }: { insights?: any }) {
 }
 
 export function ReportPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, roomCode } = useParams<{ id: string; roomCode: string }>();
   const [report, setReport] = useState<any>(null);
   const [error, setError] = useState('');
-  useEffect(() => { if (id) getReport(id).then(setReport).catch((reason: Error) => setError(reason.message)); }, [id]);
+  useEffect(() => { if (id) getReport(id, roomCode).then(setReport).catch((reason: Error) => setError(reason.message)); }, [id, roomCode]);
   if (error) return <main className="report-page"><p role="alert">{error}</p><Link to="/">Voltar</Link></main>;
   if (!report) return <main className="report-page"><p>Carregando relatorio...</p></main>;
   const summary = report.summary ?? {};
@@ -91,7 +91,7 @@ export function ReportPage() {
             {roomNotes.map((note: any) => <p key={note.id}><b>{note.author}</b><small>· {note.role}</small><span>{note.text}</span></p>)}
           </section>
         )}
-        <div className="report-actions"><button className="primary" type="button" onClick={() => downloadCsv(report.id, summary.roomCode).catch((reason: Error) => setError(reason.message))}>Baixar CSV</button><button className="secondary" type="button" onClick={() => downloadPdf(report.id, summary.roomCode).catch((reason: Error) => setError(reason.message))}>Baixar PDF</button></div>
+        <div className="report-actions"><button className="primary" type="button" onClick={() => downloadCsv(report.id, roomCode ?? summary.roomCode).catch((reason: Error) => setError(reason.message))}>Baixar CSV</button><button className="secondary" type="button" onClick={() => downloadPdf(report.id, roomCode ?? summary.roomCode).catch((reason: Error) => setError(reason.message))}>Baixar PDF</button></div>
       </div>
     </main>
   );

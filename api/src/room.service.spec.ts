@@ -54,3 +54,88 @@ describe('RoomService.joinSession', () => {
     expect(participantData.roomAvatarUrl).toBe('♠');
   });
 });
+
+describe('RoomService.create (config de padroes)', () => {
+  it('aplica apenas chaves conhecidas/validas do config como padrao da sala', async () => {
+    const prisma = prismaMock();
+    prisma.room.create.mockResolvedValue({ id: 'room-1', inviteCode: 'ABC1', name: 'Sala', visibility: 'PUBLIC' });
+    const service = new RoomService(prisma as any, new SessionService());
+
+    await service.create('Sala', 'PUBLIC', undefined, {
+      tempoReflexaoSegundos: 45,
+      iaDiscute: true,
+      permiteParticipantesIA: true,
+      maxParticipantes: 500, // invalido (fora de 1..50) -> ignorado
+      chaveEstranha: true, // desconhecida -> ignorada
+    });
+
+    const createCall = prisma.roomConfig.create.mock.calls[0][0];
+    expect(createCall.data.tempoReflexaoSegundos).toBe(45);
+    expect(createCall.data.iaDiscute).toBe(true);
+    expect(createCall.data.permiteParticipantesIA).toBe(true);
+    // valor invalido (500) foi ignorado; o @default(12) e aplicado pelo schema
+    expect(createCall.data.maxParticipantes).toBeUndefined();
+    expect(createCall.data.chaveEstranha).toBeUndefined();
+    expect(createCall.data.deckType).toBe('fibonacci');
+    expect(Array.isArray(createCall.data.deckValues)).toBe(true);
+  });
+
+  it('sem config mantem os defaults existentes', async () => {
+    const prisma = prismaMock();
+    prisma.room.create.mockResolvedValue({ id: 'room-1', inviteCode: 'ABC2', name: 'Sala', visibility: 'PUBLIC' });
+    const service = new RoomService(prisma as any, new SessionService());
+
+    await service.create('Sala', 'PUBLIC');
+
+    const createCall = prisma.roomConfig.create.mock.calls[0][0];
+    // sem config, a chave fica ausente e o Prisma aplica o @default(false) do schema
+    expect(createCall.data.iaDiscute).toBeUndefined();
+    expect(createCall.data.deckType).toBe('fibonacci');
+  });
+});
+
+describe('RoomService.mine (minhas salas)', () => {
+  it('retorna reportId do relatorio mais recente por sala', async () => {
+    const prisma = prismaMock();
+    prisma.roomParticipant.findMany.mockResolvedValue([
+      {
+        id: 'participant-1',
+        role: 'PO',
+        joinedAt: new Date('2026-09-01T10:00:00Z'),
+        lastSeenAt: new Date('2026-09-01T12:00:00Z'),
+        room: {
+          id: 'room-1',
+          inviteCode: 'ABC1',
+          name: 'Sprint 1',
+          status: 'encerrada',
+          visibility: 'PUBLIC',
+          ownerId: 'participant-1',
+          reports: [{ id: 'report-1', generatedAt: new Date('2026-09-01T11:00:00Z') }],
+        },
+      },
+      {
+        id: 'participant-2',
+        role: 'Dev',
+        joinedAt: new Date('2026-09-02T10:00:00Z'),
+        lastSeenAt: new Date('2026-09-02T12:00:00Z'),
+        room: {
+          id: 'room-2',
+          inviteCode: 'ABC2',
+          name: 'Em andamento',
+          status: 'em_andamento',
+          visibility: 'PUBLIC',
+          ownerId: 'outro',
+          reports: [],
+        },
+      },
+    ]);
+    const service = new RoomService(prisma as any, new SessionService());
+
+    const result = await service.mine('user-1');
+
+    expect(result[0]).toMatchObject({ code: 'ABC1', status: 'encerrada', isOwner: true, reportId: 'report-1' });
+    expect(result[0].reportGeneratedAt).toBe('2026-09-01T11:00:00.000Z');
+    expect(result[1].reportId).toBeNull();
+    expect(result[1].isOwner).toBe(false);
+  });
+});

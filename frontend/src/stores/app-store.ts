@@ -35,6 +35,7 @@ type AppState = {
   setAiStatus: (aiStatus: AiStatus) => void;
   setRoomError: (roomError: RoomError) => void;
   setAccountSession: (account: AuthUser, token: string) => void;
+  patchAccount: (account: AuthUser) => void;
   clearAccountSession: () => void;
   setAccountRooms: (rooms: AccountRoom[]) => void;
   setSocketConnected: (isSocketConnected: boolean) => void;
@@ -119,6 +120,10 @@ export const useAppStore = create<AppState>((set) => ({
     localStorage.setItem('planning-poker-account', JSON.stringify(account));
     localStorage.setItem('planning-poker-account-token', token);
     set({ account, accountToken: token });
+  },
+  patchAccount: (account) => {
+    localStorage.setItem('planning-poker-account', JSON.stringify(account));
+    set({ account });
   },
   clearAccountSession: () => {
     localStorage.removeItem('planning-poker-account');

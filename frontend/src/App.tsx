@@ -1,13 +1,13 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { socket } from "./lib/socket";
-import { authHeaders, loginAccount, logoutAccount, registerAccount } from "./lib/auth";
+import { authHeaders, getRoomDefaults, loginAccount, logoutAccount, registerAccount } from "./lib/auth";
 import { useAppStore } from "./stores/app-store";
 import { TableScreen } from "./features/table/TableScreen";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 const ENTRY_CARDS = ["1", "3", "5", "8", "13", "?"];
-const AVATARS = ["♠", "♥", "♦", "♣", "🃏", "🎩"];
+export const AVATARS = ["♠", "♥", "♦", "♣", "🃏", "🎩"];
 
 function normalizeRoomCode(value: string) {
   const trimmed = value.trim();
@@ -453,6 +453,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
       return;
     }
 
+    const defaults = account ? getRoomDefaults(account.id) : {};
+
     const response = await fetch(`${API}/rooms`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -460,6 +462,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
         name: roomName,
         visibility: createPrivate ? "PRIVATE" : "PUBLIC",
         password: createPrivate ? roomPassword : undefined,
+        ...(Object.keys(defaults).length ? { config: defaults } : {}),
       }),
     });
 
@@ -567,12 +570,18 @@ export function App({ mode }: { mode: "home" | "room" }) {
           {mode === "home" && homeCard === "account" && (
             <section className="account-card" aria-label="Sua conta">
               {account ? (
-                <div className="account-row">
-                  <span>{account.email}</span>
-                  <button type="button" onClick={logout}>
-                    Sair
-                  </button>
-                </div>
+                <>
+                  <div className="account-row">
+                    <span>{account.email}</span>
+                    <button type="button" onClick={logout}>
+                      Sair
+                    </button>
+                  </div>
+                  <div className="account-links">
+                    <Link to="/rooms">Minhas Salas</Link>
+                    <Link to="/profile">Perfil</Link>
+                  </div>
+                </>
               ) : (
                 <>
                   <div className="mode-switch auth-switch">

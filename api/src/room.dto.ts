@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsIn, IsObject, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateRoomDto {
   @IsOptional()
@@ -14,6 +14,10 @@ export class CreateRoomDto {
   @IsString()
   @MinLength(4)
   password?: string;
+
+  @IsOptional()
+  @IsObject()
+  config?: Record<string, unknown>;
 }
 
 export class CreateStoryDto {

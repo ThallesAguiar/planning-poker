@@ -30,6 +30,17 @@ export class LoginDto {
   password!: string;
 }
 
+export class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  avatar?: string;
+}
+
 export type SafeAuthUser = {
   id: string;
   email: string;
