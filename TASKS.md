@@ -175,6 +175,13 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Mesa principal reorganizada: historia saiu do felt, e `Revelar`, `Reagir`, progresso e acoes do PO passaram a usar footer empilhado para evitar sobreposicao.
 - [x] Acoes da mesa ajustadas para manter `Revelar cartas` ao lado de `Jogar carta` na mao do jogador; a revelacao saiu da area principal da mesa para evitar duplicidade visual.
 - [x] Botao `Reagir` reposicionado para dentro do bloco de acoes da mesa, deixando de flutuar no canto e ficando agrupado com as demais acoes.
+- [x] Historia atual reposicionada para o centro do felt, com titulo, descricao e timer dentro da mesa para focar o layout no jogo.
+- [x] Card central da historia recebeu limite de altura e scroll interno para acomodar textos longos sem quebrar o felt.
+- [x] Scroll do card central da historia ficou mais discreto, com barra fina e destaque suave apenas no hover/foco.
+- [x] Outros painéis com rolagem na interface receberam o mesmo acabamento discreto de scrollbar para manter consistência visual.
+- [x] Card central da historia ganhou mais altura no desktop, com limites ajustados para manter a leitura fluida e o mobile mais contido.
+- [x] Card da historia centralizado em ambos os eixos, com controle local `Ocultar historia` / `Mostrar historia` acima da mesa em `frontend/src/features/table/Felt.tsx`; o card foi levemente recuado para nao encostar na barra de progresso; centralizacao e alternancia verificadas em Chromium a 1440px e 390px.
+- [x] Justificativas na mesa possuem altura limitada, quebra de palavras e rolagem acessivel por teclado em `frontend/src/index.css`; timer continua disponivel acima da mesa ao ocultar historia.
 - [x] Tela raiz organizada em dois cartoes empilhados na coluna direita: `Sua conta` (login/cadastro, `account-card`) acima e `Mesa` (`join-panel` dentro de `home-stack`) abaixo, com estilos proprios para o painel de conta e erro de autenticacao separado (`account-error`); rotulos de senha desambiguados ("Senha da conta" e "Senha da sala").
 - [x] Tela raiz agora mostra um unico card por vez via `card-switch` (abas `Sua conta` e `Mesa`) em vez de empilhar os dois; `homeCard` controla qual card renderiza na home e a rota `/room/:code` continua exibindo apenas a mesa.
 - [x] Card de login (`Sua conta`) passou a ser o padrao na home (`homeCard` inicia em `account`); testes e2e atualizados para abrir a aba `Mesa` quando interagem com a sala.
@@ -285,6 +292,21 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos reorganizar o footer da mesa para evitar sobreposicao de historia, jogadores e botoes.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos mover `Revelar cartas` para junto de `Jogar carta` na mao do jogador e remover a acao redundante da mesa.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos reposicionar o botao `Reagir` no bloco de acoes da mesa.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos centralizar a historia dentro da mesa.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos limitar a altura do card central da historia e habilitar scroll interno.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos suavizar a aparencia do scroll do card central da historia.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos aplicar o mesmo estilo discreto de scrollbar aos demais painéis com scroll.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos ajustar a altura do card central da historia com foco mobile-first.
+- [x] Frontend: `npm run build` e `npm run lint` aprovados apos centralizar historia, adicionar controle de visibilidade e limitar justificativas; smoke Playwright Chromium verificou centro geometrico e ocultar/mostrar em 1440px e 390px usando sala local.
+- [x] Frontend: smoke Playwright Chromium verificou em `DEMO01` que o card da historia ficou com folga acima da barra de progresso em 1440px e 390px apos o ajuste fino de posicionamento.
+- [x] Frontend: scroll das justificativas alinhado ao visual do scroll do card da historia em `frontend/src/index.css`; build e lint revalidados.
+- [x] Frontend: `ui-scrollbar` centraliza o estilo de scrollbar da historia, chat, historias, configuracao, sidebar e dashboard em `frontend/src/index.css`; build e lint revalidados.
+- [x] Frontend: no mobile, a barra de progresso e as acoes da mesa foram deslocadas para fora do felt e ficaram entre a mesa e a mao; smoke Playwright em 390px confirmou a posicao.
+- [x] Frontend: no mobile, os botoes da mesa foram movidos para depois da mao em `frontend/src/features/table/TableScreen.tsx`; smoke Playwright confirmou a ordem `mesa -> mao -> acoes`.
+- [x] Frontend: a mao e a area dos jogadores no mobile foram compactadas em `frontend/src/index.css`; smoke Playwright em 390px confirmou altura menor e ordem correta.
+- [x] Frontend: justificativas no mobile foram alinhadas por lado da mesa em `frontend/src/index.css`; smoke Playwright com fixture confirmou `right` no lado esquerdo e `left` no lado direito.
+- [x] Frontend: justificativas ganharam modal de leitura completa com backdrop blur, travamento do fundo e fechamento por clique/Esc; `npm run build` e `npm run lint` revalidados.
+- [ ] Conferir visualmente o modal de justificativa com seis participantes e textos longos em desktop e mobile; a leitura completa agora sai do felt, mas ainda falta smoke visual dedicado.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos corrigir normalizacao do caminho de entrada em sala.
 - [x] Frontend: `npm run test:e2e` validou em Chromium criacao de sala privada e entrada por codigo+senha direto na mesa.
 - [x] Frontend: `npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` validou home e rota direta `/room/:code` sem tela legada duplicada.

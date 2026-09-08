@@ -22,7 +22,7 @@ export function ChatPanel() {
         <span>{inDiscussion ? '🔍 justifiquem seus votos' : '● ao vivo'}</span>
       </div>
       {inDiscussion && <p className="discussion-banner">Divergencia! Discutam e justifiquem antes de revotar ou finalizar.</p>}
-      <div className="messages">
+      <div className="messages ui-scrollbar">
         <AnimatePresence initial={false}>
           {messages.map((item) => (
             <motion.div

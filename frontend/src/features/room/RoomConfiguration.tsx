@@ -72,7 +72,7 @@ export function RoomConfiguration({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="config-overlay" onClick={onClose}>
-      <section className="config-panel" onClick={(event) => event.stopPropagation()}>
+      <section className="config-panel ui-scrollbar" onClick={(event) => event.stopPropagation()}>
         <div className="settings-title">
           <h3>Configuracao da sala</h3>
           <button type="button" className="close-config" onClick={onClose} aria-label="Fechar">

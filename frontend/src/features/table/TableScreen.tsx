@@ -4,7 +4,7 @@ import { useAppStore } from '../../stores/app-store';
 import { StatusBar } from './StatusBar';
 import { StoryPanel } from './StoryPanel';
 import { ParticipantsPanel } from './ParticipantsPanel';
-import { Felt } from './Felt';
+import { Felt, FeltFooter } from './Felt';
 import { Hand } from './Hand';
 import { ChatPanel } from './ChatPanel';
 import { RoomConfiguration } from '../room/RoomConfiguration';
@@ -23,7 +23,7 @@ export function TableScreen({ onLogout }: { onLogout: () => void }) {
   const [configOpen, setConfigOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportSections, setReportSections] = useState<ReportSections>({ withChat: true, withVotes: true, withRoomNotes: true, withInsights: true });
-  const { state, currentStory, isPO } = useSelf();
+  const { state, isPO } = useSelf();
   const roomError = useAppStore((s) => s.roomError);
   const clearError = useAppStore((s) => s.setRoomError);
   const config = state?.config;
@@ -71,7 +71,7 @@ export function TableScreen({ onLogout }: { onLogout: () => void }) {
       {configOpen && <RoomConfiguration onClose={() => setConfigOpen(false)} />}
 
       <div className="workspace">
-        <aside className="sidebar left">
+        <aside className="sidebar left ui-scrollbar">
           <div className="side-heading">
             <span>Sua mesa</span>
             <b>{state?.code ?? ''}</b>
@@ -129,26 +129,9 @@ export function TableScreen({ onLogout }: { onLogout: () => void }) {
         </aside>
 
         <section className="table-area">
-          <div className="story-header">
-            <div>
-              <small>HISTORIA ATUAL</small>
-              <h2>{currentStory?.title ?? 'Aguardando proxima historia'}</h2>
-              <p>{currentStory?.description ?? 'O PO pode iniciar uma historia para comecar a rodada.'}</p>
-              {currentStory && currentStory.status !== 'pendente' && (
-                <p className="story-inline-status">Status: {currentStory.status.replace(/_/g, ' ')}</p>
-              )}
-            </div>
-            {state?.remainingSeconds !== null && state?.remainingSeconds !== undefined && phase !== 'lobby' && (
-              <div className="timer">
-                <small>{state?.timerType === 'discussao' ? 'TEMPO DE DISCUSSAO' : 'TEMPO DE REFLEXAO'}</small>
-                <strong>{formatSeconds(state.remainingSeconds)}</strong>
-              </div>
-            )}
-          </div>
-
           <Felt />
-
           <Hand />
+          <FeltFooter className="felt-footer-mobile" />
         </section>
 
         <ChatPanel />

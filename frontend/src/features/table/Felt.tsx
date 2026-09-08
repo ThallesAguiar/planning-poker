@@ -20,36 +20,20 @@ function revealedJustification(state: ReturnType<typeof useSelf>['state'], parti
 }
 
 export function Felt() {
-  const { state, selfId, isPO, currentStory, votingCount, phase } = useSelf();
-  const aiStatus = useAppStore((s) => s.aiStatus);
+  const { state, selfId, currentStory, phase } = useSelf();
   const reactions = useAppStore((s) => s.reactions);
   const confetti = useAppStore((s) => s.confetti);
   const confettiKey = useAppStore((s) => s.confettiKey);
   const clearConfetti = useAppStore((s) => s.clearConfetti);
-  const [finalizing, setFinalizing] = useState(false);
-  const [reactionOpen, setReactionOpen] = useState(false);
-  const reactionRef = useRef<HTMLDivElement>(null);
+  const [storyVisible, setStoryVisible] = useState(true);
+  const [selectedJustification, setSelectedJustification] = useState<{
+    name: string;
+    avatar: string;
+    justification: string;
+  } | null>(null);
   const seats = (state?.participants ?? []).slice(0, 6);
   const revealed = phase === 'revelada' || phase === 'discussao';
   const divergent = phase === 'discussao';
-  const aiEnabled = state?.config.permiteParticipantesIA ?? false;
-  const aiDiscuss = state?.config.iaDiscute ?? false;
-  const finalValues = Array.from(new Set(state?.votes.map((vote) => String(vote.value)) ?? []));
-  const [finalValue, setFinalValue] = useState<string>(finalValues[0] ?? '');
-  const [criterion, setCriterion] = useState<ConsensusCriterion>(state?.config.criterioConsenso ?? 'decisao_po');
-
-  useEffect(() => {
-    if (finalValues.length > 0 && !finalValues.includes(finalValue)) setFinalValue(finalValues[0]);
-  }, [finalValues, finalValue]);
-
-  useEffect(() => {
-    if (!reactionOpen) return;
-    const onDown = (event: MouseEvent) => {
-      if (reactionRef.current && !reactionRef.current.contains(event.target as Node)) setReactionOpen(false);
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [reactionOpen]);
 
   useEffect(() => {
     if (!confetti) return;
@@ -57,22 +41,58 @@ export function Felt() {
     return () => window.clearTimeout(timer);
   }, [confetti, confettiKey, clearConfetti]);
 
+  useEffect(() => {
+    if (!selectedJustification) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedJustification(null);
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [selectedJustification]);
+
   return (
+    <>
+    <div className="table-view-controls">
+      <button
+        type="button"
+        className="secondary story-visibility-toggle"
+        aria-expanded={storyVisible}
+        aria-controls="table-current-story"
+        onClick={() => setStoryVisible((visible) => !visible)}
+      >
+        {storyVisible ? 'Ocultar historia' : 'Mostrar historia'}
+      </button>
+      {!storyVisible && state?.remainingSeconds != null && phase !== 'lobby' && (
+        <span className="table-hidden-story-timer">
+          {state.timerType === 'discussao' ? 'Discussao' : 'Reflexao'}: {formatSeconds(state.remainingSeconds)}
+        </span>
+      )}
+    </div>
     <div className="felt">
       <div className="felt-ring" />
-      <div className="table-label">
-        <span>RODADA DE VOTACAO</span>
-        <strong>
-          {!currentStory
-            ? 'Aguardando historia'
-            : revealed
-              ? divergent
-                ? 'Divergencia — fase de discussao'
-              : 'Cartas reveladas'
-              : phase === 'votacao'
-                ? 'Escolha sua carta'
-                : 'Lobby'}
-        </strong>
+      <div className="table-label" id="table-current-story" hidden={!storyVisible}>
+        <div className="table-label-body ui-scrollbar" tabIndex={0} role="region" aria-label="Historia atual">
+          <span>HISTORIA ATUAL</span>
+          <strong>{currentStory?.title ?? 'Aguardando proxima historia'}</strong>
+          <p>{currentStory?.description ?? 'O PO pode iniciar uma historia para comecar a rodada.'}</p>
+          {currentStory && currentStory.status !== 'pendente' && (
+            <small className="story-inline-status">Status: {currentStory.status.replace(/_/g, ' ')}</small>
+          )}
+        </div>
+        {state?.remainingSeconds !== null && state?.remainingSeconds !== undefined && phase !== 'lobby' && (
+          <div className="table-label-timer">
+            <small>{state?.timerType === 'discussao' ? 'TEMPO DE DISCUSSAO' : 'TEMPO DE REFLEXAO'}</small>
+            <strong>{formatSeconds(state.remainingSeconds)}</strong>
+          </div>
+        )}
       </div>
 
       <div className="players-around">
@@ -118,13 +138,23 @@ export function Felt() {
                   </motion.span>
                 )}
               </AnimatePresence>
-              {revealed && justification && <small className="seat-justification">{justification}</small>}
+              {revealed && justification && (
+                <div className="seat-justification ui-scrollbar" tabIndex={0} role="region" aria-label={`Justificativa de ${person.name}`}>
+                  <p>{justification}</p>
+                  <button
+                    type="button"
+                    className="seat-justification-open"
+                    onClick={() => setSelectedJustification({ name: person.name, avatar: person.avatar, justification })}
+                  >
+                    Ler completa
+                  </button>
+                </div>
+              )}
               {!person.connected && <i className="seat-offline-mark">offline</i>}
             </motion.div>
           );
         })}
       </div>
-
       {/* Reacoes flutuantes (emitidas por reaction:show) */}
       <div className="reaction-layer" aria-hidden="true">
         <AnimatePresence>
@@ -180,111 +210,181 @@ export function Felt() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="felt-footer">
-        <div className="progress">
-          <div>
-            <span>
-              {votingCount.voted} de {votingCount.total} jogaram
-            </span>
-            <b>{votingCount.total ? Math.round((votingCount.voted / votingCount.total) * 100) : 0}%</b>
-          </div>
-          <div className="progress-track">
-            <motion.i animate={{ width: `${votingCount.total ? Math.round((votingCount.voted / votingCount.total) * 100) : 0}%` }} />
-          </div>
-        </div>
-
-        <div className="table-actions">
-          <div className="reaction-bar" ref={reactionRef}>
-            <button type="button" className="reaction-trigger" onClick={() => setReactionOpen((v) => !v)} title="Enviar reacao">
-              Reagir
-            </button>
-            {reactionOpen && (
-              <div className="reaction-palette" role="dialog" aria-label="Reacoes">
-                {REACTIONS.map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className="reaction-palette-item"
-                    onClick={() => {
-                      sendReaction(value);
-                      setReactionOpen(false);
-                    }}
-                  >
-                    {value}
-                  </button>
-                ))}
+      <FeltFooter className="felt-footer-desktop" />
+    </div>
+    <AnimatePresence>
+      {selectedJustification && (
+        <motion.div
+          className="justification-modal-backdrop"
+          role="presentation"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          onClick={() => setSelectedJustification(null)}
+        >
+          <motion.div
+            className="justification-modal ui-scrollbar"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="justification-modal-title"
+            initial={{ y: 18, scale: 0.98, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            exit={{ y: 12, scale: 0.985, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="justification-modal-header">
+              <div>
+                <span>JUSTIFICATIVA COMPLETA</span>
+                <strong id="justification-modal-title">{selectedJustification.name}</strong>
               </div>
-            )}
-          </div>
+              <button
+                type="button"
+                className="justification-modal-close"
+                onClick={() => setSelectedJustification(null)}
+                aria-label="Fechar justificativa"
+              >
+                ×
+              </button>
+            </div>
+            <div className="justification-modal-body">
+              <div className="justification-modal-avatar" aria-hidden="true">
+                {selectedJustification.avatar}
+              </div>
+              <p>{selectedJustification.justification}</p>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
+  );
+}
 
-          {isPO && (
-            <>
-              {(phase === 'discussao' || phase === 'revelada') && (
-                <>
-                  <button className="secondary" type="button" onClick={() => void revote()}>
-                    Revotar
-                  </button>
-                  <div className="finalize-wrap">
-                    <button className="primary" type="button" onClick={() => setFinalizing((v) => !v)}>
-                      Finalizar
-                    </button>
-                    {finalizing && (
-                      <div className="finalize-popover">
-                        <label>
-                          Valor final
-                          <select value={finalValue} onChange={(e) => setFinalValue(e.target.value)}>
-                            {finalValues.map((value) => (
-                              <option value={value} key={value}>
-                                {value}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Criterio
-                          <select value={criterion} onChange={(e) => setCriterion(e.target.value as ConsensusCriterion)}>
-                            <option value="decisao_po">Decisao do PO</option>
-                            <option value="unanime">Consenso unanim</option>
-                            <option value="media">Media</option>
-                            <option value="mediana">Mediana</option>
-                          </select>
-                        </label>
-                        <button
-                          className="primary"
-                          type="button"
-                          disabled={finalValues.length === 0}
-                          onClick={() => {
-                            const numeric = Number(finalValue);
-                            const value = Number.isNaN(numeric) ? (finalValue as never) : numeric;
-                            finalizeStory(value, criterion);
-                            setFinalizing(false);
-                          }}
-                        >
-                          Confirmar estimativa
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <button className="secondary" type="button" onClick={() => void skipStory()}>
-                    Pular historia
-                  </button>
-                </>
-              )}
-              {aiEnabled && phase === 'votacao' && (
-                <AIParticipant enabled={aiEnabled} status={aiStatus} onRequest={requestAiVote} />
-              )}
-              {aiEnabled && aiDiscuss && phase === 'discussao' && (
-                <AIParticipant mode="discuss" enabled={aiEnabled} status={aiStatus} onRequest={requestAiSummarize} />
-              )}
-            </>
-          )}
-          {!isPO && (
-            <span className="admin-hint">
-              {phase === 'votacao' ? 'Vote quando estiver pronto. O PO conduz a revelacao.' : 'Aguardando acao do PO.'}
-            </span>
+export function FeltFooter({ className = '' }: { className?: string }) {
+  const { state, isPO, votingCount, phase } = useSelf();
+  const aiStatus = useAppStore((s) => s.aiStatus);
+  const [finalizing, setFinalizing] = useState(false);
+  const [reactionOpen, setReactionOpen] = useState(false);
+  const reactionRef = useRef<HTMLDivElement>(null);
+  const aiEnabled = state?.config.permiteParticipantesIA ?? false;
+  const aiDiscuss = state?.config.iaDiscute ?? false;
+  const finalValues = Array.from(new Set(state?.votes.map((vote) => String(vote.value)) ?? []));
+  const [finalValue, setFinalValue] = useState<string>(finalValues[0] ?? '');
+  const [criterion, setCriterion] = useState<ConsensusCriterion>(state?.config.criterioConsenso ?? 'decisao_po');
+
+  useEffect(() => {
+    if (finalValues.length > 0 && !finalValues.includes(finalValue)) setFinalValue(finalValues[0]);
+  }, [finalValues, finalValue]);
+
+  useEffect(() => {
+    if (!reactionOpen) return;
+    const onDown = (event: MouseEvent) => {
+      if (reactionRef.current && !reactionRef.current.contains(event.target as Node)) setReactionOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [reactionOpen]);
+
+  return (
+    <div className={`felt-footer ${className}`.trim()}>
+      <div className="progress">
+        <div>
+          <span>
+            {votingCount.voted} de {votingCount.total} jogaram
+          </span>
+          <b>{votingCount.total ? Math.round((votingCount.voted / votingCount.total) * 100) : 0}%</b>
+        </div>
+        <div className="progress-track">
+          <motion.i animate={{ width: `${votingCount.total ? Math.round((votingCount.voted / votingCount.total) * 100) : 0}%` }} />
+        </div>
+      </div>
+
+      <div className="table-actions">
+        <div className="reaction-bar" ref={reactionRef}>
+          <button type="button" className="reaction-trigger" onClick={() => setReactionOpen((v) => !v)} title="Enviar reacao">
+            Reagir
+          </button>
+          {reactionOpen && (
+            <div className="reaction-palette" role="dialog" aria-label="Reacoes">
+              {REACTIONS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className="reaction-palette-item"
+                  onClick={() => {
+                    sendReaction(value);
+                    setReactionOpen(false);
+                  }}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
           )}
         </div>
+
+        {isPO && (
+          <>
+            {(phase === 'discussao' || phase === 'revelada') && (
+              <>
+                <button className="secondary" type="button" onClick={() => void revote()}>
+                  Revotar
+                </button>
+                <div className="finalize-wrap">
+                  <button className="primary" type="button" onClick={() => setFinalizing((v) => !v)}>
+                    Finalizar
+                  </button>
+                  {finalizing && (
+                    <div className="finalize-popover">
+                      <label>
+                        Valor final
+                        <select value={finalValue} onChange={(e) => setFinalValue(e.target.value)}>
+                          {finalValues.map((value) => (
+                            <option value={value} key={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Criterio
+                        <select value={criterion} onChange={(e) => setCriterion(e.target.value as ConsensusCriterion)}>
+                          <option value="decisao_po">Decisao do PO</option>
+                          <option value="unanime">Consenso unanim</option>
+                          <option value="media">Media</option>
+                          <option value="mediana">Mediana</option>
+                        </select>
+                      </label>
+                      <button
+                        className="primary"
+                        type="button"
+                        disabled={finalValues.length === 0}
+                        onClick={() => {
+                          const numeric = Number(finalValue);
+                          const value = Number.isNaN(numeric) ? (finalValue as never) : numeric;
+                          finalizeStory(value, criterion);
+                          setFinalizing(false);
+                        }}
+                      >
+                        Confirmar estimativa
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <button className="secondary" type="button" onClick={() => void skipStory()}>
+                  Pular historia
+                </button>
+              </>
+            )}
+            {aiEnabled && phase === 'votacao' && <AIParticipant enabled={aiEnabled} status={aiStatus} onRequest={requestAiVote} />}
+            {aiEnabled && aiDiscuss && phase === 'discussao' && (
+              <AIParticipant mode="discuss" enabled={aiEnabled} status={aiStatus} onRequest={requestAiSummarize} />
+            )}
+          </>
+        )}
+        {!isPO && <span className="admin-hint">{phase === 'votacao' ? 'Vote quando estiver pronto. O PO conduz a revelacao.' : 'Aguardando acao do PO.'}</span>}
       </div>
     </div>
   );
@@ -292,6 +392,12 @@ export function Felt() {
 
 function inativo(person: { status?: string; connected: boolean }) {
   return (person.status ?? 'ativo') === 'inativo' || !person.connected;
+}
+
+function formatSeconds(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}:${String(rest).padStart(2, '0')}`;
 }
 
 function isOutlier(state: ReturnType<typeof useSelf>['state'], participantId: string) {

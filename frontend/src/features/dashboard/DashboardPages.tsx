@@ -26,7 +26,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </aside>
-      <section className="dashboard-content">{children}</section>
+      <section className="dashboard-content ui-scrollbar">{children}</section>
     </main>
   );
 }

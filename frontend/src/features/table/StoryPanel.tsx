@@ -48,7 +48,7 @@ export function StoryPanel() {
         </form>
       )}
 
-      <div className="story-list">
+      <div className="story-list ui-scrollbar">
         {stories.length === 0 && (
           <p className="empty-story">
             {isPO
