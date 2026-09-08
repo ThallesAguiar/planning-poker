@@ -169,6 +169,9 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Navegacao de entrada normaliza codigo, rota ou URL de sala antes de abrir `/room/:code`.
 - [x] Entrada pela home autentica e abre direto mesa de poker, inclusive em sala privada com senha.
 - [x] Badge do menu lateral em `/profile` mostra o avatar salvo da conta no lugar das iniciais; subtitulo visual abaixo do nome removido.
+- [x] Studio LLM passou a exigir token da conta no primeiro cadastro e removeu a mensagem de fallback para variaveis de ambiente.
+- [x] Studio LLM nao limpa mais o token digitado apos salvar, mantendo o valor mascarado na sessao atual.
+- [x] Hover dos avatares do Studio ajustado para evitar acionamento visual do primeiro icone quando outros sao selecionados.
 - [x] Tela raiz organizada em dois cartoes empilhados na coluna direita: `Sua conta` (login/cadastro, `account-card`) acima e `Mesa` (`join-panel` dentro de `home-stack`) abaixo, com estilos proprios para o painel de conta e erro de autenticacao separado (`account-error`); rotulos de senha desambiguados ("Senha da conta" e "Senha da sala").
 - [x] Tela raiz agora mostra um unico card por vez via `card-switch` (abas `Sua conta` e `Mesa`) em vez de empilhar os dois; `homeCard` controla qual card renderiza na home e a rota `/room/:code` continua exibindo apenas a mesa.
 - [x] Card de login (`Sua conta`) passou a ser o padrao na home (`homeCard` inicia em `account`); testes e2e atualizados para abrir a aba `Mesa` quando interagem com a sala.
@@ -273,6 +276,9 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos redesenhar sala e adicionar telas de minhas salas, perfil e configuracoes.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos trocar o badge lateral do perfil para exibir o avatar salvo.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos remover o subtitulo visual abaixo do nome no card lateral do perfil.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos exigir token da conta no primeiro cadastro do provedor LLM do Studio e remover a mensagem de fallback para ambiente.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos manter o token do provedor visivel na sessao apos salvar.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos ajustar hover dos avatares do Studio para nao sobrepor o primeiro icone.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos corrigir normalizacao do caminho de entrada em sala.
 - [x] Frontend: `npm run test:e2e` validou em Chromium criacao de sala privada e entrada por codigo+senha direto na mesa.
 - [x] Frontend: `npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` validou home e rota direta `/room/:code` sem tela legada duplicada.

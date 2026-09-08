@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { App } from './App';
 import { MyRoomsPage, ProfilePage, SettingsPage } from './features/dashboard/DashboardPages';
+import { StudioPage } from './features/dashboard/StudioPage';
 import { ReportPage } from './features/report/ReportPage';
 
 export function AppRoutes() {
@@ -10,6 +11,7 @@ export function AppRoutes() {
       <Route path="/rooms" element={<MyRoomsPage />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/studio" element={<StudioPage />} />
       <Route path="/room/:code" element={<App mode="room" />} />
       <Route path="/report/:id/:roomCode?" element={<ReportPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

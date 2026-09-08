@@ -39,6 +39,40 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   participants RoomParticipant[]
+  llmProviders LlmProvider[]
+  aiAgent AiAgent?
+  businessRules BusinessRule[]
+}
+model LlmProvider {
+  id String @id @default(cuid())
+  userId String
+  name String
+  baseUrl String
+  apiKey String
+  model String
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+model AiAgent {
+  id String @id @default(cuid())
+  userId String @unique
+  name String @default("Agente IA")
+  avatar String @default("🤖")
+  systemPrompt String @default("You are an expert planning-poker contributor analyzing user stories, voting realistically against the deck, and explaining estimates.")
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model BusinessRule {
+  id String @id @default(cuid())
+  userId String
+  content String
+  order Int @default(0)
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, order])
 }
 model Room {
   id String @id @default(cuid())

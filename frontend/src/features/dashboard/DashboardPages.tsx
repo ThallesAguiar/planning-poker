@@ -3,7 +3,7 @@ import { Link, NavLink } from "react-router-dom";
 import { getRoomDefaults, loadMyRooms, setRoomDefaults, updateProfile, type RoomDefaults } from "../../lib/auth";
 import { useAppStore } from "../../stores/app-store";
 
-function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { account } = useAppStore();
   return (
     <main className="dashboard-shell">
@@ -15,6 +15,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         <nav>
           <NavLink to="/">Home</NavLink>
           <NavLink to="/rooms">Minhas Salas</NavLink>
+          <NavLink to="/studio">Studio</NavLink>
+          <NavLink to="/settings">Padroes</NavLink>
           <NavLink to="/profile">Perfil</NavLink>
         </nav>
         <div className="dashboard-user">

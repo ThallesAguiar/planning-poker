@@ -579,6 +579,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
                   </div>
                   <div className="account-links">
                     <Link to="/rooms">Minhas Salas</Link>
+                    <Link to="/studio">Studio</Link>
                     <Link to="/profile">Perfil</Link>
                   </div>
                 </>

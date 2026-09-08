@@ -467,7 +467,10 @@ export class RoomGateway {
       const result = await this.ai.castVote(state.dbRoomId, state.currentStoryId, state.roundId);
       let participant = state.participants.find((item) => item.id === result.participantId);
       if (!participant) {
-        participant = this.presence.materialize(state, { id: result.participantId, userId: result.participantId, name: result.participantName, avatar: '🤖', role: 'IA_Agente', isAI: true, connected: true, hasVoted: false, status: 'ativo' });
+        participant = this.presence.materialize(state, { id: result.participantId, userId: result.participantId, name: result.participantName, avatar: result.avatar ?? '🤖', role: 'IA_Agente', isAI: true, connected: true, hasVoted: false, status: 'ativo' });
+      } else if (participant.name !== result.participantName || (result.avatar && participant.avatar !== result.avatar)) {
+        participant.name = result.participantName;
+        if (result.avatar) participant.avatar = result.avatar;
       }
       const chat = await this.prisma.chatMessage.create({ data: { roomId: state.dbRoomId, storyId: state.currentStoryId, participantId: result.participantId, text: result.justification, type: 'justificativa' } });
       state.messages.push({ id: chat.id, author: participant.name, role: participant.role, text: chat.text, type: 'justificativa', createdAt: chat.createdAt.toISOString() });
