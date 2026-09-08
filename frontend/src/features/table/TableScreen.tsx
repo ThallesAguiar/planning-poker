@@ -83,33 +83,33 @@ export function TableScreen({ onLogout }: { onLogout: () => void }) {
             <p>
               <b>Deck</b>: {config?.deckValues?.map((v) => String(v)).join(' · ') ?? '-'}
               <br />
-              Reflexao: {config ? formatSeconds(config.tempoReflexaoSegundos) : '2:00'}
+              Reflexão: {config ? formatSeconds(config.tempoReflexaoSegundos) : '2:00'}
               <br />
-              Discussao: {config ? formatSeconds(config.tempoDiscussaoSegundos) : '5:00'}
+              Discussão: {config ? formatSeconds(config.tempoDiscussaoSegundos) : '5:00'}
               <br />
-              Voto anonimo: {config?.votoAnonimo ? 'sim' : 'nao'} · IA: {config?.permiteParticipantesIA ? 'sim' : 'nao'}
+              Voto anônimo: {config?.votoAnonimo ? 'sim' : 'não'} · IA: {config?.permiteParticipantesIA ? 'sim' : 'não'}
               <br />
-              Revelacao automatica: {config?.revelacaoAutomatica ? 'sim' : 'nao'}
+              Revelação automática: {config?.revelacaoAutomatica ? 'sim' : 'não'}
             </p>
             {isPO && (
               <button type="button" className="config-open-link" onClick={() => setConfigOpen(true)}>
                 ⚙ Configurar sala
               </button>
             )}
-            {phase === 'finalizada' && <p className="room-done">Sala encerrada. Gere o relatorio abaixo.</p>}
+            {phase === 'finalizada' && <p className="room-done">Sala encerrada. Gere o relatório abaixo.</p>}
           </div>
           <div className="report-trigger-wrap">
             <button className="report-link" onClick={() => setReportOpen((v) => !v)}>
-              ▣ Gerar relatorio
+              ▣ Gerar relatório
             </button>
             {reportOpen && (
-              <div className="report-options-panel" role="dialog" aria-label="Opcoes do relatorio">
+              <div className="report-options-panel" role="dialog" aria-label="Opções do relatório">
                 <strong>O que incluir</strong>
                 {([
-                  ['withChat', 'Conversas das historias'],
+                  ['withChat', 'Conversas das histórias'],
                   ['withVotes', 'Votos por rodada'],
-                  ['withRoomNotes', 'Anotacoes da mesa'],
-                  ['withInsights', 'Sintese e ideias de tasks'],
+                  ['withRoomNotes', 'Anotações da mesa'],
+                  ['withInsights', 'Síntese e ideias de tasks'],
                 ] as const).map(([key, label]) => (
                   <label key={key} className="report-option-toggle">
                     <input

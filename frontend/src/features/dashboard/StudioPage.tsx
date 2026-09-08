@@ -82,7 +82,7 @@ export function StudioPage() {
       setProvider(saved);
       setProviderMsg({ kind: "ok", text: "Provedor salvo." });
     } catch {
-      setProviderMsg({ kind: "error", text: "Nao foi possivel salvar. Confira os campos." });
+      setProviderMsg({ kind: "error", text: "Não foi possível salvar. Confira os campos." });
     }
   };
 
@@ -102,7 +102,7 @@ export function StudioPage() {
       });
       setTestMsg({ kind: "ok", text: `Conectou em ${result.latencyMs}ms.` });
     } catch {
-      setTestMsg({ kind: "error", text: "Nao conectou. Confira host, modelo e token." });
+      setTestMsg({ kind: "error", text: "Não conectou. Confira host, modelo e token." });
     } finally {
       setTesting(false);
     }
@@ -118,7 +118,7 @@ export function StudioPage() {
       });
       setAgentMsg({ kind: "ok", text: "Agente salvo." });
     } catch {
-      setAgentMsg({ kind: "error", text: "Nao foi possivel salvar o agente." });
+      setAgentMsg({ kind: "error", text: "Não foi possível salvar o agente." });
     }
   };
 
@@ -128,7 +128,7 @@ export function StudioPage() {
       await saveStudioRules(accountToken, rulesText.split("\n"));
       setRulesMsg({ kind: "ok", text: "Regras salvas." });
     } catch {
-      setRulesMsg({ kind: "error", text: "Nao foi possivel salvar as regras." });
+      setRulesMsg({ kind: "error", text: "Não foi possível salvar as regras." });
     }
   };
 
@@ -137,7 +137,7 @@ export function StudioPage() {
       <div className="dashboard-title">
         <div>
           <h1>Studio</h1>
-          <p>Configure a identidade, o contexto e as credenciais das IA que participam das mesas que voce dirige.</p>
+          <p>Configure a identidade, o contexto e as credenciais das IA que participam das mesas que você dirige.</p>
         </div>
       </div>
 
@@ -150,13 +150,13 @@ export function StudioPage() {
             {provider ? (
               <>Credenciais da sua conta<span className="studio-badge ok">salvo na conta</span></>
             ) : (
-              <>Nenhum provedor cadastrado <span className="studio-badge muted">configuracao propria</span></>
+              <>Nenhum provedor cadastrado <span className="studio-badge muted">configuração própria</span></>
             )}
           </p>
           {provider ? (
             <p className="studio-hint">Token salvo: <span className="studio-masked">{provider.apiKeyMasked}</span></p>
           ) : (
-            <p className="studio-hint">Informe host, modelo e token da sua conta. O provedor fica salvo no seu login, nao em variaveis de ambiente.</p>
+            <p className="studio-hint">Informe host, modelo e token da sua conta. O provedor fica salvo no seu login, não em variáveis de ambiente.</p>
           )}
           <label>
             Nome do provedor
@@ -168,7 +168,7 @@ export function StudioPage() {
           </label>
           <label>
             Token da sua conta
-            <input type="password" value={providerApiKey} onChange={(e) => setProviderApiKey(e.target.value)} placeholder={providerHasSavedKey ? "Deixe vazio para manter o atual" : "Obrigatorio no primeiro cadastro"} />
+            <input type="password" value={providerApiKey} onChange={(e) => setProviderApiKey(e.target.value)} placeholder={providerHasSavedKey ? "Deixe vazio para manter o atual" : "Obrigatório no primeiro cadastro"} />
           </label>
           <label>
             Modelo
@@ -177,7 +177,7 @@ export function StudioPage() {
           <div className="studio-actions">
             <button className="primary" type="button" onClick={() => void saveProvider()} disabled={!providerCanSave}>Salvar provedor</button>
             <button className="secondary" type="button" onClick={() => void handleTest()} disabled={testing}>
-              {testing ? "Testando..." : "Testar conexao"}
+              {testing ? "Testando..." : "Testar conexão"}
             </button>
           </div>
           {providerMsg && <p className={providerMsg.kind === "ok" ? "account-ok" : "account-error"} role="status">{providerMsg.text}</p>}
@@ -186,7 +186,7 @@ export function StudioPage() {
 
         <section className="studio-panel">
           <h2>Agente (persona)</h2>
-          <p>Nome e avatar do bot que aparece na mesa quando voce permite participantes IA.</p>
+          <p>Nome e avatar do bot que aparece na mesa quando você permite participantes IA.</p>
           <label>
             Nome
             <input value={agentName} onChange={(e) => setAgentName(e.target.value)} maxLength={60} />
@@ -209,7 +209,7 @@ export function StudioPage() {
               value={agentPrompt}
               onChange={(e) => setAgentPrompt(e.target.value)}
               maxLength={4000}
-              placeholder="Voce e um contribuidor senior de planning poker..."
+              placeholder="Você é um contribuidor sênior de planning poker..."
             />
           </label>
           <button className="primary" type="button" onClick={() => void saveAgent()} disabled={!agentName.trim()}>Salvar agente</button>
@@ -217,14 +217,14 @@ export function StudioPage() {
         </section>
 
         <section className="studio-panel">
-          <h2>Regras de negocio</h2>
-          <p>Uma regra por linha. Entram no contexto da IA em todas as mesas que voce dirige.</p>
+          <h2>Regras de negócio</h2>
+          <p>Uma regra por linha. Entram no contexto da IA em todas as mesas que você dirige.</p>
           <label>
             Regras
             <textarea
               value={rulesText}
               onChange={(e) => setRulesText(e.target.value)}
-              placeholder={"Moeda do projeto: BRL\nEstimativas em dias-pessoa\nNao estimar tarefa acima de 13 sem dividir"}
+              placeholder={"Moeda do projeto: BRL\nEstimativas em dias-pessoa\nNão estimar tarefa acima de 13 sem dividir"}
             />
           </label>
           <button className="primary" type="button" onClick={() => void saveRules()}>Salvar regras</button>

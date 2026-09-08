@@ -4,10 +4,10 @@ import { useAppStore } from '../../stores/app-store';
 import { useSelf } from './room-actions';
 
 const PHASE_LABEL: Record<string, string> = {
-  lobby: 'Aguardando historia',
-  votacao: 'Votacao',
-  discussao: 'Discussao',
-  revelada: 'Revelacao',
+  lobby: 'Aguardando história',
+  votacao: 'Votação',
+  discussao: 'Discussão',
+  revelada: 'Revelação',
   finalizada: 'Encerrada',
 };
 
@@ -40,7 +40,7 @@ export function StatusBar({ onLogout, onOpenSettings }: { onLogout: () => void; 
         <span>PP</span> planning poker
       </div>
       <div className="session-title">
-        <small>SESSAO AO VIVO</small>
+        <small>SESSÃO AO VIVO</small>
         <strong>{state?.name ?? 'Sala'}</strong>
       </div>
 
@@ -51,7 +51,7 @@ export function StatusBar({ onLogout, onOpenSettings }: { onLogout: () => void; 
             ? formatSeconds(state.remainingSeconds)
             : '—'}
         </strong>
-        {state?.timerType && <i className="timer-kind">{state.timerType === 'reflexao' ? 'Reflexao' : 'Discussao'}</i>}
+        {state?.timerType && <i className="timer-kind">{state.timerType === 'reflexao' ? 'Reflexão' : 'Discussão'}</i>}
       </div>
 
       <button
@@ -74,7 +74,7 @@ export function StatusBar({ onLogout, onOpenSettings }: { onLogout: () => void; 
               onOpenSettings();
               setMobileMenuOpen(false);
             }}
-            title="Configuracoes da sala"
+            title="Configurações da sala"
           >
             Config
           </button>

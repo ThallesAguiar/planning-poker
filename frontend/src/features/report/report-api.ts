@@ -52,7 +52,7 @@ export async function downloadCsv(reportId: string, roomId?: string) {
 
 export async function downloadPdf(reportId: string, roomId?: string) {
   const response = await fetch(`${API}/reports/${encodeURIComponent(reportId)}/export.pdf`, { headers: { authorization: `Bearer ${tokenForRoom(roomId)}` } });
-  if (!response.ok) throw new Error('Exportacao nao autorizada.');
+  if (!response.ok) throw new Error('Exportação não autorizada.');
   const url = URL.createObjectURL(await response.blob());
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = `planning-poker-${reportId}.pdf`; anchor.click(); URL.revokeObjectURL(url);
 }

@@ -24,26 +24,26 @@ export function StoryPanel() {
   };
 
   return (
-    <section className="story-panel">
-      <h3>Historias</h3>
+<section className="story-panel">
+      <h3>Histórias</h3>
       {isPO && (
         <form className="story-add" onSubmit={submit}>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Titulo da historia"
-            aria-label="Titulo da historia"
+            placeholder="Título da história"
+            aria-label="Título da história"
             maxLength={120}
           />
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descricao (opcional)"
-            aria-label="Descricao da historia"
+            placeholder="Descrição (opcional)"
+            aria-label="Descrição da história"
             maxLength={400}
           />
           <button className="primary" type="submit" disabled={!title.trim()}>
-            Adicionar historia
+            Adicionar história
           </button>
         </form>
       )}
@@ -52,8 +52,8 @@ export function StoryPanel() {
         {stories.length === 0 && (
           <p className="empty-story">
             {isPO
-              ? 'Cadastre historias para comecar a rodada.'
-              : 'Aguardando o PO cadastrar as historias.'}
+              ? 'Cadastre histórias para começar a rodada.'
+              : 'Aguardando o PO cadastrar as histórias.'}
           </p>
         )}
         {stories.map((story) => {

@@ -35,8 +35,8 @@ test("runs a round, generates a report and shows enriched report page + download
   await joinViaEntry(pageA, "Ana", room.code);
   await joinViaEntry(pageB, "Bia", room.code);
 
-  await pageA.getByLabel("Titulo da historia").fill("Login e2e");
-  await pageA.getByRole("button", { name: "Adicionar historia" }).click();
+  await pageA.getByLabel("Título da história").fill("Login e2e");
+  await pageA.getByRole("button", { name: "Adicionar história" }).click();
   await pageA.getByRole("button", { name: "Iniciar rodada" }).click();
 
   await pageA.locator(".card", { hasText: /^5$/ }).click();
@@ -45,7 +45,7 @@ test("runs a round, generates a report and shows enriched report page + download
   await pageB.getByRole("button", { name: "Jogar carta" }).click();
   await expect(pageA.getByRole("button", { name: "Revelar cartas" })).toBeEnabled();
   await pageA.getByRole("button", { name: "Revelar cartas" }).click();
-  await expect(pageA.getByText(/Fase: Discussao/)).toBeVisible();
+  await expect(pageA.getByText(/Fase: Discussão/)).toBeVisible();
 
   // revote -> unanimous
   await pageA.getByRole("button", { name: "Revotar" }).click();
@@ -55,7 +55,7 @@ test("runs a round, generates a report and shows enriched report page + download
   await pageB.getByRole("button", { name: "Jogar carta" }).click();
   await expect(pageA.getByRole("button", { name: "Revelar cartas" })).toBeEnabled();
   await pageA.getByRole("button", { name: "Revelar cartas" }).click();
-  await expect(pageA.getByText(/Fase: Revelacao/)).toBeVisible();
+  await expect(pageA.getByText(/Fase: Revelação/)).toBeVisible();
 
   await pageA.getByRole("button", { name: "Finalizar", exact: true }).click();
   await pageA.getByRole("button", { name: "Confirmar estimativa" }).click();
@@ -93,9 +93,9 @@ test("runs a round, generates a report and shows enriched report page + download
   expect(csv.status()).toBe(200);
   expect(csv.headers()["content-type"]).toContain("text/csv");
   const csvText = await csv.text();
-  expect(csvText).toContain('"Historia"');
+  expect(csvText).toContain('"História"');
   // CSV seccional: expoe as mesmas secoes da tela (sintese, participacao, badges, anotacoes da mesa)
-  expect(csvText).toContain("SECAO");
+  expect(csvText).toContain("SEÇÃO");
 
   const pdf = await request.get(`${apiUrl}/reports/${report.id}/export.pdf`, {
     headers: { authorization: `Bearer ${token}` },
@@ -127,8 +127,8 @@ test("records a vote justification, shows per-vote names, a heuristic task chip 
   await pageA.getByLabel("Mensagem do chat").press("Enter");
   await expect(pageA.getByText("vamos comecar a planejamento")).toBeVisible();
 
-  await pageA.getByLabel("Titulo da historia").fill("Pesquisa just");
-  await pageA.getByRole("button", { name: "Adicionar historia" }).click();
+  await pageA.getByLabel("Título da história").fill("Pesquisa just");
+  await pageA.getByRole("button", { name: "Adicionar história" }).click();
   await pageA.getByRole("button", { name: "Iniciar rodada" }).click();
 
   // Ana justifica a nota antes de jogar

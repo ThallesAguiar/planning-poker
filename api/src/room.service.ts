@@ -117,7 +117,7 @@ export class RoomService {
       const request = pending ?? await this.prisma.roomJoinRequest.create({
         data: { roomId: room.id, userId: user.id, name: accountUserId ? user.name : name, avatar: accountUserId ? user.avatarUrl : avatar, requestedRole: role as any },
       });
-      return { status: 'pending' as const, joinRequestId: request.id, message: 'Aguardando aprovacao do host.' };
+      return { status: 'pending' as const, joinRequestId: request.id, message: 'Aguardando aprovação do host.' };
     }
     const identityName = accountUserId ? user.name : name;
     const identityAvatar = accountUserId ? (user.avatarUrl ?? '') : avatar;

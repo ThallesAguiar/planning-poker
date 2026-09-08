@@ -16,7 +16,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <NavLink to="/">Home</NavLink>
           <NavLink to="/rooms">Minhas Salas</NavLink>
           <NavLink to="/studio">Studio</NavLink>
-          <NavLink to="/settings">Padroes</NavLink>
+          <NavLink to="/settings">Padrões</NavLink>
           <NavLink to="/profile">Perfil</NavLink>
         </nav>
         <div className="dashboard-user">
@@ -70,11 +70,11 @@ export function MyRoomsPage() {
     if (room.status === "encerrada") {
       return room.reportId ? (
         <Link className="secondary room-action" to={`/report/${room.reportId}/${room.code}`}>
-          Ver relatorio
+          Ver relatório
         </Link>
       ) : (
-        <button className="secondary room-action" type="button" disabled title="Esta sala ainda nao gerou relatorio">
-          Sem relatorio
+        <button className="secondary room-action" type="button" disabled title="Esta sala ainda não gerou relatório">
+          Sem relatório
         </button>
       );
     }
@@ -86,7 +86,7 @@ export function MyRoomsPage() {
       <div className="dashboard-title">
         <div>
           <h1>Minhas Salas</h1>
-          <p>Participe ou crie uma nova sala para comecar a estimar.</p>
+          <p>Participe ou crie uma nova sala para começar a estimar.</p>
         </div>
         <Link className="primary dashboard-cta" to="/">+ Criar nova sala</Link>
       </div>
@@ -94,7 +94,7 @@ export function MyRoomsPage() {
         {!accountToken && (
           <article className="room-card">
             <h2>Entre com sua conta</h2>
-            <p>Faca login na aba &quot;Sua conta&quot; para suas salas aparecerem aqui.</p>
+            <p>Faça login na aba &quot;Sua conta&quot; para suas salas aparecerem aqui.</p>
             <Link className="primary room-action" to="/">Ir para home</Link>
           </article>
         )}
@@ -108,14 +108,14 @@ export function MyRoomsPage() {
         {accountRooms.map((room) => (
           <article className="room-card" key={room.id}>
             <h2>{room.name}</h2>
-            <p>Codigo: {room.code}</p>
+            <p>Código: {room.code}</p>
             <div className="room-meta">
               <span>{ROLE_LABELS[room.role] ?? room.role}</span>
               <span>{roomStatusLabel(room.status)}</span>
             </div>
-            <small>Ultima atividade: {new Date(room.lastSeenAt).toLocaleString()}</small>
-            {room.isOwner && <small className="room-owner-tag">Voce e dono</small>}
-            {room.reportGeneratedAt && <small>Relatorio: {new Date(room.reportGeneratedAt).toLocaleString()}</small>}
+            <small>Última atividade: {new Date(room.lastSeenAt).toLocaleString()}</small>
+            {room.isOwner && <small className="room-owner-tag">Você é o dono</small>}
+            {room.reportGeneratedAt && <small>Relatório: {new Date(room.reportGeneratedAt).toLocaleString()}</small>}
             {renderAction(room)}
           </article>
         ))}
@@ -157,7 +157,7 @@ export function ProfilePage() {
       patchAccount(updated);
       setMessage({ kind: "ok", text: "Perfil atualizado." });
     } catch {
-      setMessage({ kind: "error", text: "Nao foi possivel salvar. Tente novamente." });
+      setMessage({ kind: "error", text: "Não foi possível salvar. Tente novamente." });
     } finally {
       setSaving(false);
     }
@@ -172,7 +172,7 @@ export function ProfilePage() {
         <section className="profile-card">
           <div className="profile-avatar">{avatar}</div>
           <label>
-            Nome publico
+            Nome público
             <input value={name} onChange={(e) => setName(e.target.value)} minLength={1} />
           </label>
           <label>
@@ -239,20 +239,20 @@ export function SettingsPage() {
       deckType: preset.deckType,
       deckValues: preset.deckValues,
     });
-    setMessage({ kind: "ok", text: "Padroes salvos. Valerao nas proximas salas que voce criar." });
+    setMessage({ kind: "ok", text: "Padrões salvos. Valerão nas próximas salas que você criar." });
   };
 
   return (
     <DashboardShell>
       <div className="dashboard-title">
         <div>
-          <h1>Padroes de nova sala</h1>
-          <p>Tempos, deck e IA que suas proximas salas ja nascem usando. A config dentro da mesa continua valendo como final.</p>
+          <h1>Padrões de nova sala</h1>
+          <p>Tempos, deck e IA que suas próximas salas já nascem usando. A config dentro da mesa continua valendo como final.</p>
         </div>
       </div>
       <section className="settings-panel">
         <label>
-          Tempo de votacao (segundos)
+          Tempo de votação (segundos)
           <select value={reflexao} onChange={(e) => setReflexao(Number(e.target.value))}>
             <option value={60}>1 min</option>
             <option value={120}>2 min</option>
@@ -260,7 +260,7 @@ export function SettingsPage() {
           </select>
         </label>
         <label>
-          Tempo de discussao (segundos)
+          Tempo de discussão (segundos)
           <select value={discussao} onChange={(e) => setDiscussao(Number(e.target.value))}>
             <option value={60}>1 min</option>
             <option value={120}>2 min</option>
@@ -281,18 +281,18 @@ export function SettingsPage() {
           <input type="checkbox" checked={ia} onChange={(e) => setIa(e.target.checked)} />
         </label>
         <label className="settings-toggle">
-          IA discute (na discussao)
+          IA discute (na discussão)
           <input type="checkbox" checked={discute} onChange={(e) => setDiscute(e.target.checked)} disabled={!ia} />
         </label>
         <label className="settings-toggle">
-          Voto anonimo
+          Voto anônimo
           <input type="checkbox" checked={anonimo} onChange={(e) => setAnonimo(e.target.checked)} />
         </label>
         <label className="settings-toggle">
-          Revelacao automatica
+          Revelação automática
           <input type="checkbox" checked={automatic} onChange={(e) => setAutomatic(e.target.checked)} />
         </label>
-        <button className="primary" type="button" onClick={save}>Salvar padroes</button>
+        <button className="primary" type="button" onClick={save}>Salvar padrões</button>
         {message && <p className={message.kind === "ok" ? "account-ok" : "account-error"} role="status">{message.text}</p>}
       </section>
     </DashboardShell>

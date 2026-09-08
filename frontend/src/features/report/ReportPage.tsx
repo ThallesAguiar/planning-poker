@@ -56,7 +56,7 @@ export function ReportPage() {
   const [error, setError] = useState('');
   useEffect(() => { if (id) getReport(id, roomCode).then(setReport).catch((reason: Error) => setError(reason.message)); }, [id, roomCode]);
   if (error) return <main className="report-page"><p role="alert">{error}</p><Link to="/">Voltar</Link></main>;
-  if (!report) return <main className="report-page"><p>Carregando relatorio...</p></main>;
+  if (!report) return <main className="report-page"><p>Carregando relatório...</p></main>;
   const summary = report.summary ?? {};
   const stories = summary.stories ?? [];
   const insights = summary.insights;

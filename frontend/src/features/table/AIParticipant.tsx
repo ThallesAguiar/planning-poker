@@ -36,8 +36,8 @@ export function AIParticipant({ enabled, status, onRequest, mode = 'vote' }: Pro
       {(status === 'unavailable' || status === 'error') && (
         <small>
           {status === 'unavailable'
-            ? 'Configure `LLM_API_KEY` e um endpoint compativel.'
-            : 'Sem voto automatico. Continue manualmente.'}
+            ? 'Configure `LLM_API_KEY` e um endpoint compatível.'
+            : 'Sem voto automático. Continue manualmente.'}
         </small>
       )}
     </div>

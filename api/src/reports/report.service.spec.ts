@@ -126,14 +126,14 @@ describe('ReportService', () => {
       },
     });
     const csv = await service.exportCsv('report-1', token);
-    expect(csv).toContain('"Historia","Status","Valor final"');
+    expect(csv).toContain('"História","Status","Valor final"');
     expect(csv).toContain('"Login","estimada","5"');
-    expect(csv).toContain('"SECAO","Resumo da sessao"');
-    expect(csv).toContain('"SECAO","Participacao"');
+    expect(csv).toContain('"SEÇÃO","Resumo da sessão"');
+    expect(csv).toContain('"SEÇÃO","Participação"');
     expect(csv).toContain('"Maria","1","2"');
-    expect(csv).toContain('"SECAO","Badges"');
+    expect(csv).toContain('"SEÇÃO","Badges"');
     expect(csv).toContain('"Badge","Consenso unânime"');
-    expect(csv).toContain('"SECAO","Anotacoes da mesa"');
+    expect(csv).toContain('"SEÇÃO","Anotações da mesa"');
     expect(csv).toContain('"Maria","PO","chat","vamos comecar"');
   });
 

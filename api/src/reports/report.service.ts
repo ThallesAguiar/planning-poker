@@ -59,13 +59,13 @@ export class ReportService {
 
     // Cabecalho do documento (espelho da tela: sala, codigo, data).
     csv.push(line(['Sala', summary.roomName ?? '']));
-    csv.push(line(['Codigo', summary.roomCode ?? '']));
+    csv.push(line(['Código', summary.roomCode ?? '']));
     csv.push(line(['Gerado em', summary.generatedAt ?? '']));
     csv.push('');
 
     // Historias: tabela tabular (mesmas colunas de antes).
-    csv.push(line(['SECAO', 'Historias']));
-    csv.push(line(['Historia', 'Status', 'Valor final', 'Rodadas', 'Segundos', 'Criterio', 'Justificativas', 'Ideias de tasks']));
+    csv.push(line(['SEÇÃO', 'Histórias']));
+    csv.push(line(['História', 'Status', 'Valor final', 'Rodadas', 'Segundos', 'Critério', 'Justificativas', 'Ideias de tasks']));
     for (const story of summary.stories ?? []) {
       csv.push(line([
         story.title,
@@ -85,14 +85,14 @@ export class ReportService {
     const overall = summary.insights?.overall;
     if (overall) {
       csv.push('');
-      csv.push(line(['SECAO', 'Resumo da sessao']));
-      csv.push(line(['Sintese', overall.summary ?? '']));
+      csv.push(line(['SEÇÃO', 'Resumo da sessão']));
+      csv.push(line(['Síntese', overall.summary ?? '']));
       if ((overall.suggestedTasks ?? []).length > 0) csv.push(line(['Tasks', overall.suggestedTasks.join(' | ')]));
     }
 
     csv.push('');
-    csv.push(line(['SECAO', 'Participacao']));
-    csv.push(line(['Nome', 'Votos', 'Comentarios']));
+    csv.push(line(['SEÇÃO', 'Participação']));
+    csv.push(line(['Nome', 'Votos', 'Comentários']));
     for (const person of summary.participation ?? []) {
       csv.push(line([person.name ?? person.participantId, person.votes ?? 0, person.comments ?? 0]));
     }
@@ -100,14 +100,14 @@ export class ReportService {
     const badges = (summary.achievements ?? []).map((slug: string) => BADGE_LABELS[slug] ?? slug);
     if (badges.length > 0) {
       csv.push('');
-      csv.push(line(['SECAO', 'Badges']));
+      csv.push(line(['SEÇÃO', 'Badges']));
       for (const badge of badges) csv.push(line(['Badge', badge]));
     }
 
     const notes = summary.roomNotes ?? [];
     if (notes.length > 0) {
       csv.push('');
-      csv.push(line(['SECAO', 'Anotacoes da mesa']));
+      csv.push(line(['SEÇÃO', 'Anotações da mesa']));
       csv.push(line(['Autor', 'Papel', 'Tipo', 'Texto']));
       for (const note of notes) csv.push(line([note.author, note.role, note.type, note.text]));
     }

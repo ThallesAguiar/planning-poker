@@ -107,17 +107,17 @@ export function RoomConfiguration({ onClose }: { onClose: () => void }) {
   return (
     <div className="config-overlay" onClick={onClose}>
       <section className="config-panel ui-scrollbar" onClick={(event) => event.stopPropagation()}>
-        <div className="settings-title">
-          <h3>Configuracao da sala</h3>
+<div className="settings-title">
+          <h3>Configuração da sala</h3>
           <button type="button" className="close-config" onClick={onClose} aria-label="Fechar">
             ×
           </button>
         </div>
-        {locked && <p className="config-notice">Sala em andamento: privacidade e senha ainda podem ser alteradas. As demais configuracoes so valem antes de iniciar a rodada.</p>}
+        {locked && <p className="config-notice">Sala em andamento: privacidade e senha ainda podem ser alteradas. As demais configurações só valem antes de iniciar a rodada.</p>}
         <label>
           Acesso da sala
           <select value={visibility} onChange={(e) => { setVisibility(e.target.value as RoomVisibility); setSecurityError(''); }}>
-            <option value="PUBLIC">Publica</option>
+            <option value="PUBLIC">Pública</option>
             <option value="PRIVATE">Privada</option>
           </select>
         </label>
@@ -134,33 +134,33 @@ export function RoomConfiguration({ onClose }: { onClose: () => void }) {
                   setPassword(event.target.value);
                   setSecurityError('');
                 }}
-                placeholder={state?.visibility === 'PRIVATE' ? 'Deixe vazio para manter a senha atual' : 'Minimo 4 caracteres'}
+placeholder={state?.visibility === 'PRIVATE' ? 'Deixe vazio para manter a senha atual' : 'Mínimo 4 caracteres'}
               />
             </span>
-            <small>{state?.visibility === 'PRIVATE' ? 'Preencha apenas se quiser trocar a senha.' : 'Novas entradas vao exigir esta senha.'}</small>
+            <small>{state?.visibility === 'PRIVATE' ? 'Preencha apenas se quiser trocar a senha.' : 'Novas entradas vão exigir esta senha.'}</small>
           </label>
         )}
         {securityError && <p className="config-notice" role="alert">{securityError}</p>}
-        <NumberField label="Tempo de reflexao (segundos)" value={reflexao} onChange={setReflexao} disabled={locked} />
-        <NumberField label="Tempo de discussao (segundos)" value={discussao} onChange={setDiscussao} disabled={locked} />
+<NumberField label="Tempo de reflexão (segundos)" value={reflexao} onChange={setReflexao} disabled={locked} />
+        <NumberField label="Tempo de discussão (segundos)" value={discussao} onChange={setDiscussao} disabled={locked} />
         <NumberField label="Limite de participantes" value={maxPessoas} onChange={setMaxPessoas} disabled={locked} />
         <label>
           Regra de consenso
           <select value={criterio} onChange={(e) => setCriterio(e.target.value as never)} disabled={locked}>
-            <option value="decisao_po">Decisao do PO</option>
-            <option value="unanime">Consenso unanim</option>
-            <option value="media">Media</option>
+            <option value="decisao_po">Decisão do PO</option>
+            <option value="unanime">Consenso unânime</option>
+            <option value="media">Média</option>
             <option value="mediana">Mediana</option>
           </select>
         </label>
         <ToggleField label="Participante IA" checked={ia} onChange={setIa} disabled={locked} />
         <ToggleField label="IA discute" checked={discute} onChange={setDiscute} disabled={locked || !ia} />
-        <ToggleField label="Voto anonimo" checked={anonimo} onChange={setAnonimo} disabled={locked} />
-        <ToggleField label="Revelacao automatica" checked={automatic} onChange={setAutomatic} disabled={locked} />
-        <ToggleField label="Exigir aprovacao para entrar" checked={requireJoinApproval} onChange={setRequireJoinApproval} />
-        <div className="config-participants">
-          <h4>Solicitacoes de papel</h4>
-          {roleRequests.length === 0 && <p className="config-empty">Nenhuma solicitacao pendente.</p>}
+        <ToggleField label="Voto anônimo" checked={anonimo} onChange={setAnonimo} disabled={locked} />
+        <ToggleField label="Revelação automática" checked={automatic} onChange={setAutomatic} disabled={locked} />
+        <ToggleField label="Exigir aprovação para entrar" checked={requireJoinApproval} onChange={setRequireJoinApproval} />
+<div className="config-participants">
+          <h4>Solicitações de papel</h4>
+          {roleRequests.length === 0 && <p className="config-empty">Nenhuma solicitação pendente.</p>}
           {roleRequests.map((request) => (
             <div className="config-participant-row" key={request.id}>
               <span className="person-avatar">?</span>
@@ -187,7 +187,7 @@ export function RoomConfiguration({ onClose }: { onClose: () => void }) {
               <span className="person-avatar">{request.avatar || '?'}</span>
               <span>
                 <b>{request.name}</b>
-                <small>{request.requestedRole} aguardando aprovacao</small>
+                <small>{request.requestedRole} aguardando aprovação</small>
               </span>
               <span className="join-request-actions">
                 <button type="button" className="moderate-link" onClick={() => decideJoinRequest(request.id, 'approved')}>
@@ -231,8 +231,8 @@ export function RoomConfiguration({ onClose }: { onClose: () => void }) {
             );
           })}
         </div>
-        <button className="primary" type="button" onClick={save}>
-          Salvar configuracao
+<button className="primary" type="button" onClick={save}>
+          Salvar configuração
         </button>
       </section>
     </div>

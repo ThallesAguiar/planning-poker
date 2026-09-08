@@ -35,21 +35,21 @@ test("full round with two sessions: story, vote, reveal gating, discussion, revo
   await joinViaEntry(pageB, "Bia", room.code);
 
   // only the PO sees the story add form
-  await expect(pageA.getByLabel("Titulo da historia")).toBeVisible();
-  await expect(pageB.getByLabel("Titulo da historia")).toHaveCount(0);
+  await expect(pageA.getByLabel("Título da história")).toBeVisible();
+  await expect(pageB.getByLabel("Título da história")).toHaveCount(0);
 
   // reveal is blocked early (lobby / no votes yet)
   await expect(pageA.getByRole("button", { name: "Revelar cartas" })).toBeDisabled();
 
-  await pageA.getByLabel("Titulo da historia").fill("Login OAuth");
-  await pageA.getByLabel("Descricao da historia").fill("Proteger rotas privadas");
-  await pageA.getByRole("button", { name: "Adicionar historia" }).click();
+  await pageA.getByLabel("Título da história").fill("Login OAuth");
+  await pageA.getByLabel("Descrição da história").fill("Proteger rotas privadas");
+  await pageA.getByRole("button", { name: "Adicionar história" }).click();
   await expect(pageA.getByText("Login OAuth")).toBeVisible();
 
   await pageA.getByRole("button", { name: "Iniciar rodada" }).click();
   await expect(pageA.getByText("Proteger rotas privadas")).toBeVisible();
   await expect(pageB.getByText("Proteger rotas privadas")).toBeVisible();
-  await expect(pageA.getByText(/Fase: Votacao/)).toBeVisible();
+  await expect(pageA.getByText(/Fase: Votação/)).toBeVisible();
 
   // still blocked before any vote
   await expect(pageA.getByRole("button", { name: "Revelar cartas" })).toBeDisabled();
@@ -68,13 +68,13 @@ test("full round with two sessions: story, vote, reveal gating, discussion, revo
 
   // reveal -> divergence opens discussion
   await pageA.getByRole("button", { name: "Revelar cartas" }).click();
-  await expect(pageA.getByText(/Fase: Discussao/)).toBeVisible();
-  await expect(pageB.getByText(/Fase: Discussao/)).toBeVisible();
+  await expect(pageA.getByText(/Fase: Discussão/)).toBeVisible();
+  await expect(pageB.getByText(/Fase: Discussão/)).toBeVisible();
   await expect(pageB.getByText(/justifiquem seus votos/i)).toBeVisible();
 
   // revote
   await pageA.getByRole("button", { name: "Revotar" }).click();
-  await expect(pageA.getByText(/Fase: Votacao/)).toBeVisible();
+  await expect(pageA.getByText(/Fase: Votação/)).toBeVisible();
 
   // unanimous now
   await pageA.locator(".card", { hasText: /^8$/ }).click();
@@ -83,7 +83,7 @@ test("full round with two sessions: story, vote, reveal gating, discussion, revo
   await pageB.getByRole("button", { name: "Jogar carta" }).click();
   await expect(pageA.getByRole("button", { name: "Revelar cartas" })).toBeEnabled();
   await pageA.getByRole("button", { name: "Revelar cartas" }).click();
-  await expect(pageA.getByText(/Fase: Revelacao/)).toBeVisible();
+  await expect(pageA.getByText(/Fase: Revelação/)).toBeVisible();
 
   // finalize
   await pageA.getByRole("button", { name: "Finalizar", exact: true }).click();

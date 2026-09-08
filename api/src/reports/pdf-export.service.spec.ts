@@ -51,19 +51,19 @@ function fullSummary(overrides: Record<string, unknown> = {}) {
 describe('PdfExportService', () => {
   it('serializes the report into readable lines mirroring the screen', () => {
     const lines = service.layout(fullSummary());
-    expect(lines[0]).toBe('Planning Poker - Relatorio');
-    expect(lines.join('\n')).toContain('Sala Sprint Sessão 32 · codigo SPRINT');
+    expect(lines[0]).toBe('Planning Poker - Relatório');
+    expect(lines.join('\n')).toContain('Sala Sprint Sessão 32 · código SPRINT');
     expect(lines.join('\n')).toContain('Consenso unânime');
-    expect(lines.join('\n')).toContain('--- Historias ---');
-    expect(lines.join('\n')).toContain('Login [estimada] Valor: 5 | 2 rodada(s) | 120s | criterio decisao_po');
+    expect(lines.join('\n')).toContain('--- Histórias ---');
+    expect(lines.join('\n')).toContain('Login [estimada] Valor: 5 | 2 rodada(s) | 120s | critério decisao_po');
     expect(lines.join('\n')).toContain('Rodada 1: Ana -> 5 "simples de implementar"; Bia -> 8');
     expect(lines.join('\n')).toContain('Rodada 2: Ana -> 5; Bia -> 5');
     expect(lines.join('\n')).toContain('# Ana [justificativa]: fechou no 5');
-    expect(lines.join('\n')).toContain('Sintese: Sintese gerada');
-    expect(lines.join('\n')).toContain('--- Resumo da sessao ---');
-    expect(lines.join('\n')).toContain('--- Participacao ---');
+    expect(lines.join('\n')).toContain('Síntese: Sintese gerada');
+    expect(lines.join('\n')).toContain('--- Resumo da sessão ---');
+    expect(lines.join('\n')).toContain('--- Participação ---');
     expect(lines.join('\n')).toContain('Ana: 2 voto(s), 1 comentario(s)');
-    expect(lines.join('\n')).toContain('--- Anotacoes da mesa ---');
+    expect(lines.join('\n')).toContain('--- Anotações da mesa ---');
     expect(lines.join('\n')).toContain('Ana (PO) [chat]: vamos começar');
   });
 

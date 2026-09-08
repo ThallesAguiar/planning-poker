@@ -19,9 +19,9 @@ export class PdfExportService {
     const lines: string[] = [];
     const push = (text: string) => lines.push(text);
 
-    push('Planning Poker - Relatorio');
+    push('Planning Poker - Relatório');
     const room = summary.roomName ?? (summary.roomId ? `#${summary.roomId}` : '');
-    const code = summary.roomCode ? ` · codigo ${summary.roomCode}` : '';
+    const code = summary.roomCode ? ` · código ${summary.roomCode}` : '';
     const stamp = summary.generatedAt ? ` · ${this.formatDate(summary.generatedAt)}` : '';
     if (room || code || stamp) push(`Sala ${room}${code}${stamp}`);
 
@@ -29,9 +29,9 @@ export class PdfExportService {
     if (badges.length > 0) push(`Badges: ${badges.join(', ')}`);
 
     push('');
-    push('--- Historias ---');
+    push('--- Histórias ---');
     for (const story of summary.stories ?? []) {
-      const criterion = story.criterion ? ` | criterio ${story.criterion}` : '';
+      const criterion = story.criterion ? ` | critério ${story.criterion}` : '';
       push(`${story.title} [${story.status}] Valor: ${story.finalValue ?? '-'} | ${story.rounds ?? 0} rodada(s) | ${story.totalSeconds ?? 0}s${criterion}`);
       for (const round of story.roundsDetail ?? []) {
         const details = round.voteDetails ?? [];
@@ -47,7 +47,7 @@ export class PdfExportService {
       }
       const insight = (summary.insights?.perStory ?? []).find((item: any) => item.storyId === story.id);
       if (insight) {
-        push(`  Sintese: ${insight.summary}`);
+        push(`  Síntese: ${insight.summary}`);
         if ((insight.suggestedTasks ?? []).length > 0) push(`  Tasks: ${insight.suggestedTasks.join(' | ')}`);
       }
     }
@@ -55,13 +55,13 @@ export class PdfExportService {
     const overall = summary.insights?.overall;
     if (overall) {
       push('');
-      push('--- Resumo da sessao ---');
+      push('--- Resumo da sessão ---');
       push(overall.summary);
       if ((overall.suggestedTasks ?? []).length > 0) push(`Tasks: ${overall.suggestedTasks.join(' | ')}`);
     }
 
     push('');
-    push('--- Participacao ---');
+    push('--- Participação ---');
     for (const person of summary.participation ?? []) {
       push(`${person.name ?? person.participantId}: ${person.votes ?? 0} voto(s), ${person.comments ?? 0} comentario(s)`);
     }
@@ -69,7 +69,7 @@ export class PdfExportService {
     const notes = summary.roomNotes ?? [];
     if (notes.length > 0) {
       push('');
-      push('--- Anotacoes da mesa ---');
+      push('--- Anotações da mesa ---');
       for (const note of notes) {
         push(`${note.author} (${note.role}) [${note.type}]: ${note.text}`);
       }

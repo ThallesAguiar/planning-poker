@@ -56,7 +56,7 @@ test("US2 create room while logged in -> shows in Minhas Salas -> rejoin by acco
   await page.getByLabel("Nome da sala").fill(roomName);
   await page.locator("form.join-panel button[type='submit']").click();
   await expect(page.locator(".app-shell")).toBeVisible();
-  await expect(page.getByLabel("Titulo da historia")).toBeVisible();
+  await expect(page.getByLabel("Título da história")).toBeVisible();
 
   // logout from the table topbar returns to the home entry (account session cleared)
   await page.locator(".top-actions").getByRole("button", { name: "Sair" }).click();

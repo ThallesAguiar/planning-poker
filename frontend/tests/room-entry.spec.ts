@@ -91,7 +91,7 @@ test("joins private room from home with code and password directly", async ({
   await page.goto(appUrl);
   await page.getByRole("tab", { name: "Mesa" }).click();
   await page.getByLabel("Nome", { exact: true }).fill("Jogador Playwright");
-  await page.getByLabel("Codigo da sala").fill(room.code);
+  await page.getByLabel("Código da sala").fill(room.code);
   await page.getByLabel("Senha da sala").fill("1234");
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();
 
@@ -139,7 +139,7 @@ test("does not enter private room with wrong password", async ({
   await page.goto(appUrl);
   await page.getByRole("tab", { name: "Mesa" }).click();
   await page.getByLabel("Nome", { exact: true }).fill("Jogador Erro");
-  await page.getByLabel("Codigo da sala").fill(room.code);
+  await page.getByLabel("Código da sala").fill(room.code);
   await page.getByLabel("Senha da sala").fill("9999");
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();
 
@@ -194,11 +194,11 @@ test("does not enter room when code does not exist", async ({ page }) => {
   await page.goto(appUrl);
   await page.getByRole("tab", { name: "Mesa" }).click();
   await page.getByLabel("Nome", { exact: true }).fill("Jogador Inexistente");
-  await page.getByLabel("Codigo da sala").fill(`ZZ${Date.now().toString().slice(-4)}`);
+  await page.getByLabel("Código da sala").fill(`ZZ${Date.now().toString().slice(-4)}`);
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();
 
   await expect(page).toHaveURL(appUrl);
-  await expect(page.getByRole("alert")).toContainText("Sala nao encontrada.");
+  await expect(page.getByRole("alert")).toContainText("Sala não encontrada.");
   await expect(
     page.getByRole("button", { name: /Revelar cartas|Revelar votos/ }),
   ).toHaveCount(0);
@@ -218,7 +218,7 @@ test("reload on room route restores session without flashing entry screen", asyn
   await page.goto(appUrl);
   await page.getByRole("tab", { name: "Mesa" }).click();
   await page.getByLabel("Nome", { exact: true }).fill("Jogador Reload");
-  await page.getByLabel("Codigo da sala").fill(room.code);
+  await page.getByLabel("Código da sala").fill(room.code);
   await page.getByLabel("Senha da sala").fill("1234");
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();
 
@@ -259,7 +259,7 @@ test("room connection stays on websocket without polling flood", async ({
   await page.goto(appUrl);
   await page.getByRole("tab", { name: "Mesa" }).click();
   await page.getByLabel("Nome", { exact: true }).fill("Jogador Socket");
-  await page.getByLabel("Codigo da sala").fill(room.code);
+  await page.getByLabel("Código da sala").fill(room.code);
   await page.getByLabel("Senha da sala").fill("1234");
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();
 

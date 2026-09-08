@@ -42,7 +42,7 @@ export function ParticipantsPanel() {
       {isPO && pending.length > 0 && (
         <div className="role-requests">
           <span className="role-requests-title">
-            Solicitacoes de papel <b>{pending.length}</b>
+            Solicitações de papel <b>{pending.length}</b>
           </span>
           {pending.map((request) => (
             <div className="role-request" key={request.id}>
@@ -56,7 +56,7 @@ export function ParticipantsPanel() {
                 type="button"
                 className="moderate-link"
                 onClick={() => decideRoleChange(request.id, 'approved')}
-                title="Aprovar mudanca de papel"
+                title="Aprovar mudança de papel"
               >
                 Aprovar
               </button>
@@ -64,7 +64,7 @@ export function ParticipantsPanel() {
                 type="button"
                 className="moderate-link reject"
                 onClick={() => decideRoleChange(request.id, 'rejected')}
-                title="Recusar mudanca de papel"
+                title="Recusar mudança de papel"
               >
                 Recusar
               </button>
@@ -76,7 +76,7 @@ export function ParticipantsPanel() {
       {!isPO && (
         <div className="role-ask" ref={roleRef}>
           {selfPending ? (
-            <small className="role-ask-pending">Solicitacao de papel pendente ({selfPending.requestedRole})</small>
+            <small className="role-ask-pending">Solicitação de papel pendente ({selfPending.requestedRole})</small>
           ) : (
             <button type="button" className="moderate-link role-ask-trigger" onClick={() => setRoleOpen((v) => !v)}>
               Solicitar papel
@@ -116,14 +116,14 @@ export function ParticipantsPanel() {
               </b>
               <small>
                 {presenceLabel(person)}
-                {isSelf ? ' · Voce' : ''}
+                {isSelf ? ' · Você' : ''}
                 {!isSelf && isPO && (
                   <span className="moderate-actions">
                     {person.id !== state?.ownerId && (
                       <button
                         type="button"
                         className="moderate-link"
-                        title={confirmRemove === person.id ? 'Confirmar remocao' : 'Remover participante'}
+                        title={confirmRemove === person.id ? 'Confirmar remoção' : 'Remover participante'}
                         onClick={() => {
                           if (confirmRemove === person.id) {
                             removeParticipant(person.id);
@@ -145,7 +145,7 @@ export function ParticipantsPanel() {
                         type="button"
                         className="moderate-link"
                         disabled={person.id === state?.ownerId}
-                        title="Marcar como afastado (nao conta como ativo)"
+                        title="Marcar como afastado (não conta como ativo)"
                         onClick={() => setParticipantStatus(person.id, 'inativo')}
                       >
                         Afastar

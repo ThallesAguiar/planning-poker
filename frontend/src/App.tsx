@@ -167,7 +167,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
       }
     };
     const kicked = (payload: { message?: string }) => {
-      useAppStore.getState().setRoomError({ code: "REMOVED", message: payload.message ?? "Voce foi removido desta sala." });
+      useAppStore.getState().setRoomError({ code: "REMOVED", message: payload.message ?? "Você foi removido desta sala." });
       localStorage.removeItem(roomStorageKey("token", routeCode));
       localStorage.removeItem(roomStorageKey("participant", routeCode));
       sessionStorage.removeItem(roomStorageKey("pending-join", routeCode));
@@ -316,7 +316,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
       });
 
       if (response.status === 404) {
-        setJoinError("Sala nao encontrada.");
+        setJoinError("Sala não encontrada.");
         setRestoringRoom(false);
         return false;
       } else if (response.status === 202) {
@@ -327,7 +327,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
         setRestoringRoom(false);
         return false;
       } else if (!response.ok) {
-        setJoinError("Senha invalida ou sala indisponivel.");
+        setJoinError("Senha inválida ou sala indisponível.");
         setRestoringRoom(false);
         return false;
       } else {
@@ -379,7 +379,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
         resolve(reason);
       };
       const failBySocketError = (payload: { code?: string }) => {
-        if (payload?.code === "FORBIDDEN" || payload?.code === "REMOVED") setJoinError("Voce nao pode entrar nesta sala.");
+        if (payload?.code === "FORBIDDEN" || payload?.code === "REMOVED") setJoinError("Você não pode entrar nesta sala.");
         fail("socket-error");
       };
       const timer = window.setTimeout(() => fail("timeout"), 6000);
@@ -416,7 +416,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
       setJoined(false);
       joinedRef.current = false;
       if (confirmationResult === "timeout") {
-        setJoinError("Nao foi possivel entrar na sala.");
+        setJoinError("Não foi possível entrar na sala.");
       }
     }
     return confirmed;
@@ -530,7 +530,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
     });
 
     if (!response.ok) {
-      setJoinError("Nao foi possivel criar a sala.");
+      setJoinError("Não foi possível criar a sala.");
       return;
     }
 
@@ -553,7 +553,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
       setName(session.user.name);
       setAvatar(session.user.avatar || avatar);
     } catch {
-      setAccountError(authMode === "register" ? "Nao foi possivel cadastrar usuario." : "Login invalido.");
+      setAccountError(authMode === "register" ? "Não foi possível cadastrar usuário." : "Login inválido.");
     }
   };
 
@@ -578,7 +578,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
       <main className="restoring-shell">
         <div className="restoring-card waiting-card" aria-live="polite">
           <div className="brand-mark">♠</div>
-          <h2>Aguardando aprovacao</h2>
+          <h2>Aguardando aprovação</h2>
           <span className="restoring-spinner" aria-hidden="true" />
           <p className="room-loading-copy">
             Pedido enviado. O host precisa aprovar sua entrada na sala.
@@ -595,7 +595,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
           <h2>Reconectando sala...</h2>
           <span className="restoring-spinner" aria-hidden="true" />
           <p className="room-loading-copy">
-            Restaurando sua sessao e abrindo mesa.
+            Restaurando sua sessão e abrindo mesa.
           </p>
         </div>
       </main>
@@ -607,7 +607,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
         <section className="home-hero" aria-label="Planning Poker">
           <p className="home-kicker">PLANNING POKER</p>
           <h1>
-            Faca a estimativa
+            Faça a estimativa
             <span> ganhar vida.</span>
           </h1>
           <p>
@@ -679,7 +679,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
                     </button>
                   </div>
                   <label>
-                    Email
+                    E-mail
                     <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
                   </label>
                   {authMode === "register" && (
@@ -784,7 +784,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
           {mode === "room" || homeMode === "join" ? (
             <>
               <label>
-                Codigo da sala
+                Código da sala
                 <input
                   value={roomId}
                   onChange={(e) => setRoomId(e.target.value)}
@@ -902,7 +902,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
           <p className="home-tip">
             <span aria-hidden="true">i</span>
             {mode === "room" || homeMode === "join"
-              ? "Dica: peca o codigo da sala para o Product Owner iniciar a partida."
+              ? "Dica: peça o código da sala para o Product Owner iniciar a partida."
               : "Dica: salas privadas pedem uma senha com pelo menos 4 caracteres."}
           </p>
         </form>

@@ -68,28 +68,28 @@ export function Felt() {
         aria-controls="table-current-story"
         onClick={() => setStoryVisible((visible) => !visible)}
       >
-        {storyVisible ? 'Ocultar historia' : 'Mostrar historia'}
+        {storyVisible ? 'Ocultar história' : 'Mostrar história'}
       </button>
       {!storyVisible && state?.remainingSeconds != null && phase !== 'lobby' && (
         <span className="table-hidden-story-timer">
-          {state.timerType === 'discussao' ? 'Discussao' : 'Reflexao'}: {formatSeconds(state.remainingSeconds)}
+          {state.timerType === 'discussao' ? 'Discussão' : 'Reflexão'}: {formatSeconds(state.remainingSeconds)}
         </span>
       )}
     </div>
     <div className="felt">
       <div className="felt-ring" />
       <div className="table-label" id="table-current-story" hidden={!storyVisible}>
-        <div className="table-label-body ui-scrollbar" tabIndex={0} role="region" aria-label="Historia atual">
-          <span>HISTORIA ATUAL</span>
-          <strong>{currentStory?.title ?? 'Aguardando proxima historia'}</strong>
-          <p>{currentStory?.description ?? 'O PO pode iniciar uma historia para comecar a rodada.'}</p>
+        <div className="table-label-body ui-scrollbar" tabIndex={0} role="region" aria-label="História atual">
+          <span>HISTÓRIA ATUAL</span>
+          <strong>{currentStory?.title ?? 'Aguardando próxima história'}</strong>
+          <p>{currentStory?.description ?? 'O PO pode iniciar uma história para começar a rodada.'}</p>
           {currentStory && currentStory.status !== 'pendente' && (
             <small className="story-inline-status">Status: {currentStory.status.replace(/_/g, ' ')}</small>
           )}
         </div>
         {state?.remainingSeconds !== null && state?.remainingSeconds !== undefined && phase !== 'lobby' && (
           <div className="table-label-timer">
-            <small>{state?.timerType === 'discussao' ? 'TEMPO DE DISCUSSAO' : 'TEMPO DE REFLEXAO'}</small>
+            <small>{state?.timerType === 'discussao' ? 'TEMPO DE DISCUSSÃO' : 'TEMPO DE REFLEXÃO'}</small>
             <strong>{formatSeconds(state.remainingSeconds)}</strong>
           </div>
         )}
@@ -110,7 +110,7 @@ export function Felt() {
               <span className="seat-avatar">{person.avatar}</span>
               <small>
                 {person.name}
-                {isSelf ? ' (voce)' : ''}
+                {isSelf ? ' (você)' : ''}
               </small>
               <AnimatePresence mode="wait">
                 {showFaceDown && (
@@ -303,7 +303,7 @@ export function FeltFooter({ className = '' }: { className?: string }) {
 
       <div className="table-actions">
         <div className="reaction-bar" ref={reactionRef}>
-          <button type="button" className="reaction-trigger" onClick={() => setReactionOpen((v) => !v)} title="Enviar reacao">
+          <button type="button" className="reaction-trigger" onClick={() => setReactionOpen((v) => !v)} title="Enviar reação">
             Reagir
           </button>
           {reactionOpen && (
@@ -349,11 +349,11 @@ export function FeltFooter({ className = '' }: { className?: string }) {
                         </select>
                       </label>
                       <label>
-                        Criterio
+                        Critério
                         <select value={criterion} onChange={(e) => setCriterion(e.target.value as ConsensusCriterion)}>
-                          <option value="decisao_po">Decisao do PO</option>
-                          <option value="unanime">Consenso unanim</option>
-                          <option value="media">Media</option>
+                          <option value="decisao_po">Decisão do PO</option>
+                          <option value="unanime">Consenso unânime</option>
+                          <option value="media">Média</option>
                           <option value="mediana">Mediana</option>
                         </select>
                       </label>
@@ -374,7 +374,7 @@ export function FeltFooter({ className = '' }: { className?: string }) {
                   )}
                 </div>
                 <button className="secondary" type="button" onClick={() => void skipStory()}>
-                  Pular historia
+                  Pular história
                 </button>
               </>
             )}
@@ -384,7 +384,7 @@ export function FeltFooter({ className = '' }: { className?: string }) {
             )}
           </>
         )}
-        {!isPO && <span className="admin-hint">{phase === 'votacao' ? 'Vote quando estiver pronto. O PO conduz a revelacao.' : 'Aguardando acao do PO.'}</span>}
+        {!isPO && <span className="admin-hint">{phase === 'votacao' ? 'Vote quando estiver pronto. O PO conduz a revelação.' : 'Aguardando ação do PO.'}</span>}
       </div>
     </div>
   );

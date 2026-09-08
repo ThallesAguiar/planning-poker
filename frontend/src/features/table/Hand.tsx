@@ -9,7 +9,7 @@ export function Hand() {
   const deck = state?.config.deckValues ?? [];
 
   const playable = canVote && !hasVoted && !isObserver && Boolean(currentStory);
-  const playHint = hasVoted ? 'Carta jogada — aguarde a revelacao.' : !currentStory ? 'Nenhuma historia em votacao no momento.' : phase !== 'votacao' ? 'A votacao nao esta aberta.' : 'Selecione uma carta e jogue.';
+  const playHint = hasVoted ? 'Carta jogada — aguarde a revelação.' : !currentStory ? 'Nenhuma história em votação no momento.' : phase !== 'votacao' ? 'A votação não está aberta.' : 'Selecione uma carta e jogue.';
 
   return (
     <motion.div
@@ -18,9 +18,9 @@ export function Hand() {
       transition={{ duration: 0.28, ease: 'easeOut' }}
     >
       <div className="hand-title">
-        <span>Sua mao</span>
+        <span>Sua mão</span>
         <small>{selected === null ? playHint : `Carta ${String(selected)} selecionada`}</small>
-        {isObserver && <small>Voce e um Observador: apenas assiste.</small>}
+        {isObserver && <small>Você é um Observador: apenas assiste.</small>}
       </div>
       <div className="cards">
         {deck.map((value, index) => (

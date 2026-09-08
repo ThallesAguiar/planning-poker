@@ -20,20 +20,20 @@ import type { RoomConfig, RoomVisibility, ParticipantRole, ChatMessage, VoteValu
 type Client = Socket;
 
 const ERROR_MESSAGES: Record<RoomErrorCode, string> = {
-  ROOM_NOT_FOUND: 'Sala nao encontrada.',
+  ROOM_NOT_FOUND: 'Sala não encontrada.',
   PASSWORD_REQUIRED: 'Esta sala exige senha.',
-  INVALID_PASSWORD: 'Senha invalida ou sala indisponivel.',
-  FORBIDDEN: 'Acao nao permitida para o seu papel.',
-  INVALID_PHASE: 'Acao indisponivel na fase atual.',
-  INVALID_VOTE: 'Voto ou historia invalida para esta rodada.',
+  INVALID_PASSWORD: 'Senha inválida ou sala indisponível.',
+  FORBIDDEN: 'Ação não permitida para o seu papel.',
+  INVALID_PHASE: 'Ação indisponível na fase atual.',
+  INVALID_VOTE: 'Voto ou história inválida para esta rodada.',
   ROOM_FULL: 'Sala cheia.',
-  AI_UNAVAILABLE: 'Participante IA indisponivel.',
-  INVALID_PROFILE_UPDATE: 'Atualizacao de perfil invalida.',
-  INVALID_ROLE_REQUEST: 'Solicitacao de papel invalida.',
-  PROFILE_REQUEST_NOT_FOUND: 'Solicitacao de papel nao encontrada.',
-  REMOVED: 'Voce foi removido desta sala.',
-  NOT_PARTICIPANT: 'Voce nao e mais participante desta sala.',
-  INVALID_CONFIG: 'Configuracao invalida.',
+  AI_UNAVAILABLE: 'Participante IA indisponível.',
+  INVALID_PROFILE_UPDATE: 'Atualização de perfil inválida.',
+  INVALID_ROLE_REQUEST: 'Solicitação de papel inválida.',
+  PROFILE_REQUEST_NOT_FOUND: 'Solicitação de papel não encontrada.',
+  REMOVED: 'Você foi removido desta sala.',
+  NOT_PARTICIPANT: 'Você não é mais participante desta sala.',
+  INVALID_CONFIG: 'Configuração inválida.',
 };
 
 const ALLOWED_CONFIG_ROLES: ParticipantRole[] = ['PO', 'Dev', 'QA', 'ScrumMaster', 'Observador', 'IA_Agente'];
@@ -168,7 +168,7 @@ export class RoomGateway {
     stale.forEach((socketId) => {
       const socket = this.server.sockets.sockets.get(socketId);
       if (socket) {
-        socket.emit('room:kicked', { code: 'FORBIDDEN', message: 'Sessao duplicada.' });
+        socket.emit('room:kicked', { code: 'FORBIDDEN', message: 'Sessão duplicada.' });
         socket.disconnect(true);
       }
     });
@@ -389,7 +389,7 @@ export class RoomGateway {
       this.emitError(client, 'INVALID_VOTE');
       return;
     }
-    const message = 'Voce foi removido desta sala.';
+    const message = 'Você foi removido desta sala.';
     (change.socketIds ?? []).forEach((socketId) => {
       const socket = this.server.sockets.sockets.get(socketId);
       if (socket) {

@@ -18,10 +18,10 @@ export function ChatPanel() {
   return (
     <aside className="sidebar chat">
       <div className="chat-heading">
-        <h3>{inDiscussion ? 'Discussao' : 'Chat da mesa'}</h3>
+        <h3>{inDiscussion ? 'Discussão' : 'Chat da mesa'}</h3>
         <span>{inDiscussion ? '🔍 justifiquem seus votos' : '● ao vivo'}</span>
       </div>
-      {inDiscussion && <p className="discussion-banner">Divergencia! Discutam e justifiquem antes de revotar ou finalizar.</p>}
+      {inDiscussion && <p className="discussion-banner">Divergência! Discutam e justifiquem antes de revotar ou finalizar.</p>}
       <div className="messages ui-scrollbar">
         <AnimatePresence initial={false}>
           {messages.map((item) => (

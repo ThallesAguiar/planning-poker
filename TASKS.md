@@ -434,6 +434,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [~] Testes unitarios de timeout, saida invalida, chave ausente e limite de custo adicionados; testes de integracao/fallback humano pendentes.
 - [x] Testes unitarios de deadline, substituicao e cancelamento do timer em `api/src/realtime/timer.service.spec.ts`.
 - [x] Relatorio como documentacao: justificativa opcional no voto (masked em votacao/lobby), votos por rodada com nomes, sintese + tarefas sugeridas em modo hibrido com fallback heuristico, anotacoes da mesa e geracao com secoes configuráveis; 61 testes API, 21 E2E, frontend build/lint aprovados, container API rebuildado (`planning-pocker`) com `dist` novo.
+- [x] Portugues do sistema: acentos e grafia corrigidos nos textos visiveis do frontend (mesa, configuracao, dashboard, studio, perfil, home e relatorio) e nas mensagens de erro/sessao do backend, exportacoes CSV/PDF e rotulos/aria-labels; testes ajustados (`Fase: Discussão/Revelação/Votação`, `Título/Descrição da história`, `Adicionar história`, `Código da sala`, `Sala não encontrada`, cabecalhos CSV `SEÇÃO`/`História`); frontend `tsc -b`+`oxlint` aprovados e API `vitest run` aprovado com 20 arquivos e 127 testes.
 
 ## Ordem recomendada
 
