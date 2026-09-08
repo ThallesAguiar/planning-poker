@@ -81,7 +81,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #d7f36a; outline-
 .account-avatar-fixed { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 999px; border: 2px solid #283b2c; background: #d7f36a; font-size: 20px; }
 .avatar-pick { margin: 18px 0 2px; font-size: 12px; font-weight: 800; }
 .avatar-pick > div { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.avatar-pick button { border: 1px solid #d5d8cf; background: #fff; border-radius: 999px; width: 42px; height: 42px; font-size: 20px; transition: transform .18s, border-color .18s, background .18s, box-shadow .18s; }
+.avatar-pick button { border: 1px solid #d5d8cf; background: #fff; border-radius: 999px; width: 42px; height: 42px; font-size: 20px; transition: background .18s, box-shadow .18s; }
 .avatar-pick button:hover { transform: translateY(-3px); border-color: #5c7848; }
 .avatar-pick button.active { border: 2px solid #283b2c; background: #d7f36a; box-shadow: 0 0 0 4px #d7f36a55; }
 .join-panel [role="alert"] { color: #a43c32; font-size: 12px; font-weight: 700; line-height: 1.4; }

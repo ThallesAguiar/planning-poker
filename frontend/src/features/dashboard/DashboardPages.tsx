@@ -18,10 +18,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <NavLink to="/profile">Perfil</NavLink>
         </nav>
         <div className="dashboard-user">
-          <span>{account?.name?.slice(0, 2).toUpperCase() ?? "J1"}</span>
+          <span>{account?.avatar?.trim() || "♠"}</span>
           <div>
             <b>{account?.name ?? "Jogador 1"}</b>
-            <small>{account?.avatar ?? ""}</small>
           </div>
         </div>
       </aside>
