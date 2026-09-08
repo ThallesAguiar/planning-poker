@@ -13,6 +13,7 @@ function prismaMock() {
     user: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      upsert: vi.fn(),
       update: vi.fn(),
     },
     roomParticipant: {
@@ -22,6 +23,8 @@ function prismaMock() {
       count: vi.fn(),
       findMany: vi.fn(),
     },
+    roomJoinRequest: { findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
+    roomRemovedIdentity: { findUnique: vi.fn(), deleteMany: vi.fn() },
     story: { count: vi.fn(), create: vi.fn() },
     roomRoleChangeRequest: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     sprintReport: { create: vi.fn() },
@@ -137,5 +140,54 @@ describe('RoomService.mine (minhas salas)', () => {
     expect(result[0].reportGeneratedAt).toBe('2026-09-01T11:00:00.000Z');
     expect(result[1].reportId).toBeNull();
     expect(result[1].isOwner).toBe(false);
+  });
+});
+
+describe('RoomService.joinSession approval', () => {
+  it('creates a pending join request when room requires approval', async () => {
+    const prisma = prismaMock();
+    prisma.room.findFirst.mockResolvedValue({
+      id: 'room-1',
+      inviteCode: 'AB12',
+      visibility: 'PUBLIC',
+      passwordHash: null,
+      ownerId: 'owner-1',
+      config: { requireJoinApproval: true, papeisPermitidos: ['PO', 'Dev'], maxParticipantes: 12 },
+    });
+    prisma.user.upsert.mockResolvedValue({ id: 'guest-1', name: 'Ana', avatarUrl: '♠', isGuest: true });
+    prisma.roomParticipant.findUnique.mockResolvedValue(null);
+    prisma.roomParticipant.count.mockResolvedValue(1);
+    prisma.roomRemovedIdentity.findUnique.mockResolvedValue(null);
+    prisma.roomJoinRequest.findFirst.mockResolvedValue(null);
+    prisma.roomJoinRequest.create.mockResolvedValue({ id: 'jr1', roomId: 'room-1', userId: 'guest-1', name: 'Ana', avatar: '♠', requestedRole: 'Dev', status: 'pending', createdAt: new Date(), decidedAt: null });
+
+    const service = new RoomService(prisma as any, new SessionService());
+    const result = await service.joinSession('AB12', 'Ana', '♠', 'Dev', undefined, undefined, 'guest-1');
+
+    expect(result).toMatchObject({ status: 'pending', joinRequestId: 'jr1' });
+    expect(prisma.roomParticipant.create).not.toHaveBeenCalled();
+  });
+
+  it('removed guest must request approval before rejoining', async () => {
+    const prisma = prismaMock();
+    prisma.room.findFirst.mockResolvedValue({
+      id: 'room-1',
+      inviteCode: 'AB12',
+      visibility: 'PUBLIC',
+      passwordHash: null,
+      ownerId: 'owner-1',
+      config: { requireJoinApproval: false, papeisPermitidos: ['PO', 'Dev'], maxParticipantes: 12 },
+    });
+    prisma.user.upsert.mockResolvedValue({ id: 'guest-1', name: 'Ana', avatarUrl: '♠', isGuest: true });
+    prisma.roomParticipant.findUnique.mockResolvedValue(null);
+    prisma.roomParticipant.count.mockResolvedValue(1);
+    prisma.roomRemovedIdentity.findUnique.mockResolvedValue({ id: 'removed-1' });
+    prisma.roomJoinRequest.findFirst.mockResolvedValue(null);
+    prisma.roomJoinRequest.create.mockResolvedValue({ id: 'jr2', roomId: 'room-1', userId: 'guest-1', name: 'Ana', avatar: '♠', requestedRole: 'Dev', status: 'pending', createdAt: new Date(), decidedAt: null });
+
+    const service = new RoomService(prisma as any, new SessionService());
+    const result = await service.joinSession('AB12', 'Ana', '♠', 'Dev', undefined, undefined, 'guest-1');
+
+    expect(result).toMatchObject({ status: 'pending', joinRequestId: 'jr2' });
   });
 });

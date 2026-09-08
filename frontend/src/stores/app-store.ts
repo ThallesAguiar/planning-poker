@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { RoomRoleChangeRequest, RoomState } from '@planning-poker/shared-types';
+import type { RoomJoinRequest, RoomRoleChangeRequest, RoomState } from '@planning-poker/shared-types';
 import type { AccountRoom, AuthUser } from '../lib/auth';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
@@ -27,8 +27,10 @@ type AppState = {
   confetti: boolean;
   confettiKey: number;
   roleRequests: RoomRoleChangeRequest[];
+  joinRequests: RoomJoinRequest[];
   setState: (state: RoomState) => void;
   patchParticipant: (participant: RoomState['participants'][number]) => void;
+  removeParticipant: (participantId: string) => void;
   clearState: () => void;
   setConnectionStatus: (connectionStatus: ConnectionStatus) => void;
   setSelfId: (selfId: string) => void;
@@ -46,6 +48,8 @@ type AppState = {
   setRoleRequests: (requests: RoomRoleChangeRequest[]) => void;
   upsertRoleRequest: (request: RoomRoleChangeRequest) => void;
   resolveRoleRequest: (requestId: string) => void;
+  setJoinRequests: (requests: RoomJoinRequest[]) => void;
+  resolveJoinRequest: (requestId: string) => void;
 };
 
 const storedAccount = () => {
@@ -70,6 +74,7 @@ export const useAppStore = create<AppState>((set) => ({
   confetti: false,
   confettiKey: 0,
   roleRequests: [],
+  joinRequests: [],
   setState: (state) => set({ state }),
   pushReaction: (participantId, value) =>
     set(({ reactions }) => {
@@ -103,7 +108,11 @@ export const useAppStore = create<AppState>((set) => ({
           : { ...state, participants: [...state.participants, participant] },
       };
     }),
-  clearState: () => set({ state: null, reactions: [], confetti: false, roleRequests: [] }),
+  removeParticipant: (participantId) =>
+    set(({ state }) => ({
+      state: state ? { ...state, participants: state.participants.filter((item) => item.id !== participantId) } : state,
+    })),
+  clearState: () => set({ state: null, reactions: [], confetti: false, roleRequests: [], joinRequests: [] }),
   setRoleRequests: (roleRequests) => set({ roleRequests }),
   upsertRoleRequest: (request) =>
     set(({ roleRequests }) => {
@@ -112,6 +121,9 @@ export const useAppStore = create<AppState>((set) => ({
     }),
   resolveRoleRequest: (requestId) =>
     set(({ roleRequests }) => ({ roleRequests: roleRequests.filter((item) => item.id !== requestId) })),
+  setJoinRequests: (joinRequests) => set({ joinRequests }),
+  resolveJoinRequest: (requestId) =>
+    set(({ joinRequests }) => ({ joinRequests: joinRequests.filter((item) => item.id !== requestId) })),
   setConnectionStatus: (connectionStatus) => set({ connectionStatus, isSocketConnected: connectionStatus === 'connected' }),
   setSelfId: (selfId) => set({ selfId }),
   setAiStatus: (aiStatus) => set({ aiStatus }),

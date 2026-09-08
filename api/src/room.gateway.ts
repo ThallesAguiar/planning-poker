@@ -15,7 +15,7 @@ import { ReportService } from './reports/report.service.js';
 import { defaultConfig } from './realtime/room.types.js';
 import type { InternalRoomState } from './realtime/room.types.js';
 import type { PresenceChange } from './realtime/presence.service.js';
-import type { RoomConfig, ParticipantRole, ChatMessage, VoteValue, RoomErrorCode, RoomRoleChangeRequest, ReportOptions } from '@planning-poker/shared-types';
+import type { RoomConfig, RoomVisibility, ParticipantRole, ChatMessage, VoteValue, RoomErrorCode, RoomRoleChangeRequest, ReportOptions } from '@planning-poker/shared-types';
 
 type Client = Socket;
 
@@ -246,18 +246,21 @@ export class RoomGateway {
   }
 
   @SubscribeMessage('room:configure')
-  async configure(@ConnectedSocket() client: Client, @MessageBody() payload: { config: Partial<RoomConfig> }) {
+  async configure(@ConnectedSocket() client: Client, @MessageBody() payload: { config?: Partial<RoomConfig>; visibility?: RoomVisibility; password?: string }) {
     const state = this.authorized(client, 'PO');
     if (!state) {
       this.emitError(client, 'FORBIDDEN');
       return;
     }
-    if (state.phase !== 'lobby') {
+    const source = payload.config ?? {};
+    const hasConfigPatch = Object.keys(source).length > 0;
+    const configKeys = Object.keys(source);
+    const hasOnlyAccessConfig = hasConfigPatch && configKeys.every((key) => key === 'requireJoinApproval');
+    if (hasConfigPatch && !hasOnlyAccessConfig && state.phase !== 'lobby') {
       this.emitError(client, 'INVALID_PHASE');
       return;
     }
     const patch: Partial<RoomConfig> = {};
-    const source = payload.config ?? {};
     if (source.maxParticipantes !== undefined) {
       if (!Number.isInteger(source.maxParticipantes) || source.maxParticipantes < 1 || source.maxParticipantes > 50) {
         this.emitError(client, 'INVALID_CONFIG');
@@ -290,6 +293,7 @@ export class RoomGateway {
     if (source.iaDiscute !== undefined) patch.iaDiscute = Boolean(source.iaDiscute);
     if (source.votoAnonimo !== undefined) patch.votoAnonimo = Boolean(source.votoAnonimo);
     if (source.revelacaoAutomatica !== undefined) patch.revelacaoAutomatica = Boolean(source.revelacaoAutomatica);
+    if (source.requireJoinApproval !== undefined) patch.requireJoinApproval = Boolean(source.requireJoinApproval);
     if (source.criterioConsenso !== undefined) {
       if (!ALLOWED_CONSENSUS.includes(source.criterioConsenso)) {
         this.emitError(client, 'INVALID_CONFIG');
@@ -305,8 +309,43 @@ export class RoomGateway {
       patch.papeisPermitidos = source.papeisPermitidos;
     }
     if (source.permiteRevotoIlimitado !== undefined) patch.permiteRevotoIlimitado = Boolean(source.permiteRevotoIlimitado);
-    state.config = { ...state.config, ...patch };
-    await this.prisma.roomConfig.update({ where: { roomId: state.dbRoomId }, data: { ...patch, deckValues: patch.deckValues as any, papeisPermitidos: patch.papeisPermitidos as any } as any });
+
+    const roomPatch: { visibility?: RoomVisibility; passwordHash?: string | null } = {};
+    if (payload.visibility !== undefined && !['PUBLIC', 'PRIVATE'].includes(payload.visibility)) {
+      this.emitError(client, 'INVALID_CONFIG');
+      return;
+    }
+    const requestedVisibility = payload.visibility ?? state.visibility;
+    const password = payload.password?.trim();
+    if (requestedVisibility === 'PRIVATE') {
+      if (password !== undefined && password.length > 0) {
+        if (password.length < 4) {
+          this.emitError(client, 'INVALID_CONFIG');
+          return;
+        }
+        roomPatch.passwordHash = await bcrypt.hash(password, 12);
+      } else if (state.visibility !== 'PRIVATE' || !state.passwordHash) {
+        this.emitError(client, 'INVALID_CONFIG');
+        return;
+      }
+      if (state.visibility !== 'PRIVATE') roomPatch.visibility = 'PRIVATE';
+    } else if (payload.visibility === 'PUBLIC') {
+      roomPatch.visibility = 'PUBLIC';
+      roomPatch.passwordHash = null;
+    } else if (password !== undefined && password.length > 0) {
+      this.emitError(client, 'INVALID_CONFIG');
+      return;
+    }
+
+    if (Object.keys(patch).length > 0) {
+      state.config = { ...state.config, ...patch };
+      await this.prisma.roomConfig.update({ where: { roomId: state.dbRoomId }, data: { ...patch, deckValues: patch.deckValues as any, papeisPermitidos: patch.papeisPermitidos as any } as any });
+    }
+    if (Object.keys(roomPatch).length > 0) {
+      const updated = await this.prisma.room.update({ where: { id: state.dbRoomId }, data: roomPatch });
+      state.visibility = updated.visibility as RoomVisibility;
+      state.passwordHash = updated.passwordHash;
+    }
     this.broadcastRoom(state);
   }
 
@@ -337,6 +376,14 @@ export class RoomGateway {
       this.emitError(client, 'FORBIDDEN');
       return;
     }
+    const target = state.participants.find((participant) => participant.id === payload.participantId);
+    if (target?.userId) {
+      await this.prisma.roomRemovedIdentity.upsert({
+        where: { roomId_userId: { roomId: state.dbRoomId, userId: target.userId } },
+        update: { removedByParticipantId: this.participantId(client), createdAt: new Date() },
+        create: { roomId: state.dbRoomId, userId: target.userId, removedByParticipantId: this.participantId(client) },
+      });
+    }
     const change = await this.presence.remove(state, payload.participantId);
     if (!change) {
       this.emitError(client, 'INVALID_VOTE');
@@ -352,6 +399,47 @@ export class RoomGateway {
     });
     this.emitParticipantUpdate(state, change);
     this.broadcastRoom(state);
+  }
+
+  @SubscribeMessage('room:listJoinRequests')
+  async listJoinRequests(@ConnectedSocket() client: Client) {
+    const state = this.authorized(client, 'PO');
+    if (!state) {
+      this.emitError(client, 'FORBIDDEN');
+      return;
+    }
+    client.emit('room:joinRequests', { requests: await this.rooms.listJoinRequests(state.dbRoomId) });
+  }
+
+  @SubscribeMessage('room:decideJoinRequest')
+  async decideJoinRequest(@ConnectedSocket() client: Client, @MessageBody() payload: { requestId: string; decision: 'approved' | 'rejected' }) {
+    const state = this.authorized(client, 'PO');
+    if (!state || !payload?.requestId || !['approved', 'rejected'].includes(payload.decision)) {
+      this.emitError(client, 'FORBIDDEN');
+      return;
+    }
+    try {
+      const result = await this.rooms.decideJoinRequest(state.dbRoomId, this.participantId(client), payload.requestId, payload.decision);
+      this.server.to(state.roomId).emit('room:joinRequestDecision', { requestId: result.request.id, decision: payload.decision, decidedAt: result.request.decidedAt ?? new Date().toISOString() });
+      client.emit('room:joinRequests', { requests: await this.rooms.listJoinRequests(state.dbRoomId) });
+      if (result.participant) {
+        const materialized = this.presence.materialize(state, {
+          id: result.participant.id,
+          userId: result.participant.userId,
+          name: result.participant.roomDisplayName ?? '',
+          avatar: result.participant.roomAvatarUrl ?? '',
+          role: result.participant.role as any,
+          isAI: result.participant.isAI,
+          connected: false,
+          hasVoted: false,
+          status: 'ativo',
+        });
+        this.emitParticipantUpdate(state, { participant: materialized, reason: 'joined' });
+        this.broadcastRoom(state);
+      }
+    } catch {
+      this.emitError(client, 'INVALID_CONFIG');
+    }
   }
 
   @SubscribeMessage('room:setParticipantStatus')
@@ -654,6 +742,7 @@ export class RoomGateway {
           maxParticipantes: room.config.maxParticipantes,
           votoAnonimo: room.config.votoAnonimo,
           revelacaoAutomatica: room.config.revelacaoAutomatica,
+          requireJoinApproval: (room.config as any).requireJoinApproval ?? false,
           criterioConsenso: room.config.criterioConsenso as RoomConfig['criterioConsenso'],
           papeisPermitidos: (room.config.papeisPermitidos as ParticipantRole[]) ?? defaultConfig.papeisPermitidos,
         }

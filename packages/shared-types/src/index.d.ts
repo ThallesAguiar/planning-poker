@@ -21,6 +21,7 @@ export type RoomConfig = {
     maxParticipantes: number;
     votoAnonimo: boolean;
     revelacaoAutomatica: boolean;
+    requireJoinApproval: boolean;
     criterioConsenso: ConsensusCriterion;
     papeisPermitidos?: ParticipantRole[];
     permiteRevotoIlimitado?: boolean;
@@ -73,6 +74,30 @@ export type RoomRoleChangeRequest = {
     createdAt: string;
     decidedAt?: string | null;
 };
+export type RoomJoinRequest = {
+    id: string;
+    name: string;
+    avatar?: string | null;
+    requestedRole: ParticipantRole;
+    status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+    createdAt: string;
+    decidedAt?: string | null;
+};
+export type JoinRoomPendingResponse = {
+    status: 'pending';
+    joinRequestId: string;
+    message: string;
+};
+export type JoinRoomApprovedResponse = {
+    status?: 'approved';
+    token: string;
+    sessionId: string;
+    participantId: string;
+    roomId: string;
+    role: ParticipantRole;
+    reusedMembership?: boolean;
+};
+export type JoinRoomResponse = JoinRoomPendingResponse | JoinRoomApprovedResponse;
 export type Story = {
     id: string;
     title: string;
@@ -231,7 +256,14 @@ export type ClientToServerEvents = {
         decision: 'approved' | 'rejected';
     }) => void;
     'room:configure': (payload: {
-        config: Partial<RoomConfig>;
+        config?: Partial<RoomConfig>;
+        visibility?: RoomVisibility;
+        password?: string;
+    }) => void;
+    'room:listJoinRequests': () => void;
+    'room:decideJoinRequest': (payload: {
+        requestId: string;
+        decision: 'approved' | 'rejected';
     }) => void;
     'room:transferOwner': (payload: {
         participantId: string;
@@ -281,6 +313,14 @@ export type ServerToClientEvents = {
     'room:participantUpdate': (payload: ParticipantUpdate) => void;
     'room:profileRequestPending': (payload: RoomRoleChangeRequest) => void;
     'room:profileDecision': (payload: {
+        requestId: string;
+        decision: 'approved' | 'rejected';
+        decidedAt: string;
+    }) => void;
+    'room:joinRequests': (payload: {
+        requests: RoomJoinRequest[];
+    }) => void;
+    'room:joinRequestDecision': (payload: {
         requestId: string;
         decision: 'approved' | 'rejected';
         decidedAt: string;

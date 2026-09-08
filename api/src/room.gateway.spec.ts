@@ -37,6 +37,7 @@ const roleRequests = new Map<string, any>();
       maxParticipantes: 12,
       votoAnonimo: false,
       revelacaoAutomatica: false,
+      requireJoinApproval: false,
       criterioConsenso: 'decisao_po',
       papeisPermitidos: ['PO', 'Dev', 'QA', 'ScrumMaster', 'Observador', 'IA_Agente'],
     },
@@ -54,9 +55,22 @@ const roleRequests = new Map<string, any>();
       update: vi.fn(async (args: any) => Object.assign(room, args.data)),
     },
     roomConfig: { update: vi.fn(async () => ({})) },
+    roomRemovedIdentity: {
+      upsert: vi.fn(async () => ({})),
+      findUnique: vi.fn(async () => null),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
+    roomJoinRequest: {
+      findFirst: vi.fn(async () => null),
+      findUnique: vi.fn(async () => null),
+      findMany: vi.fn(async () => []),
+      create: vi.fn(async (args: any) => ({ id: `jr${pidCounter++}`, status: 'pending', createdAt: new Date(), decidedAt: null, ...args.data })),
+      update: vi.fn(async (args: any) => ({ id: args.where.id, roomId: 'room-1', userId: 'session-sock-dev', name: 'Pendente', avatar: '♠', requestedRole: 'Dev', createdAt: new Date(), decidedAt: args.data.decidedAt, ...args.data })),
+    },
     roomParticipant: {
       findUnique: vi.fn(async (args: any) => (args.where?.roomId_userId ? participantsByUser.get(args.where.roomId_userId.userId) : participantsById.get(args.where?.id)) ?? null),
       findMany: vi.fn(async () => []),
+      count: vi.fn(async () => participantsById.size),
 create: vi.fn(async (args: any) => {
         const row = { id: `p${pidCounter++}`, ...args.data, status: 'ativo', joinedAt: new Date(), lastSeenAt: new Date() };
         participantsByUser.set(args.data.userId, row);
@@ -125,7 +139,7 @@ create: vi.fn(async (args: any) => {
     broadcast: (state) => (gateway as any).broadcastRoom(state),
   });
 
-  return { prisma, gateway, server, sessions, storyId: () => stories[0]?.id, newClient, ai };
+  return { prisma, gateway, server, sessions, storyId: () => stories[0]?.id, newClient, ai, room };
 }
 
 type ClientContext = {
@@ -271,6 +285,9 @@ describe('RoomGateway (multi-client integration)', () => {
 await h.gateway.removeParticipant(po.client as any, { participantId: removedId });
     const kicked = dev.emits.find((e) => e.event === 'room:kicked');
     expect(kicked?.payload.code).toBe('REMOVED');
+    expect(h.prisma.roomRemovedIdentity.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { roomId_userId: { roomId: 'room-1', userId: 'session-sock-dev' } },
+    }));
     expect(dev.connected).toBe(false);
     expect(latestRoomState(h)?.participants.some((p: any) => p.id === removedId)).toBe(false);
 
@@ -331,5 +348,52 @@ it('same session reconnection reuses the participant and disconnects the stale s
 
     await h.gateway.configure(po.client as any, { config: { maxParticipantes: 500 } });
     expect(errorCodes(po)).toContain('INVALID_CONFIG');
+  });
+
+  it('lets PO switch room privacy and password outside lobby', async () => {
+    const po = newClient('sock-po');
+    await joinRoom(h, po);
+    await h.gateway.createStory(po.client as any, { title: 'H' });
+    await h.gateway.present(po.client as any, { storyId: h.storyId() });
+
+    await h.gateway.configure(po.client as any, { visibility: 'PRIVATE', password: 'safe-pass' });
+
+    expect(errorCodes(po)).toEqual([]);
+    expect(latestRoomState(h)?.visibility).toBe('PRIVATE');
+    expect(h.room.passwordHash).toBeTruthy();
+    expect(h.prisma.room.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'room-1' },
+      data: expect.objectContaining({ visibility: 'PRIVATE' }),
+    }));
+
+    await h.gateway.configure(po.client as any, { visibility: 'PUBLIC' });
+    expect(latestRoomState(h)?.visibility).toBe('PUBLIC');
+    expect(h.room.passwordHash).toBeNull();
+
+    await h.gateway.configure(po.client as any, { config: { requireJoinApproval: true } });
+    expect(latestRoomState(h)?.config.requireJoinApproval).toBe(true);
+
+    await h.gateway.configure(po.client as any, { config: { tempoReflexaoSegundos: 30 } });
+    expect(errorCodes(po)).toContain('INVALID_PHASE');
+  });
+
+  it('lets PO approve pending join requests', async () => {
+    const po = newClient('sock-po');
+    await joinRoom(h, po);
+    h.prisma.roomJoinRequest.findMany.mockResolvedValueOnce([
+      { id: 'jr1', name: 'Pendente', avatar: '♠', requestedRole: 'Dev', status: 'pending', createdAt: new Date(), decidedAt: null },
+    ]);
+    await h.gateway.listJoinRequests(po.client as any);
+    expect(po.emits.find((e) => e.event === 'room:joinRequests')?.payload.requests).toHaveLength(1);
+
+    h.prisma.roomJoinRequest.findUnique.mockResolvedValueOnce({ id: 'jr1', roomId: 'room-1', userId: 'guest-1', name: 'Pendente', avatar: '♠', requestedRole: 'Dev', status: 'pending', createdAt: new Date(), decidedAt: null });
+    h.prisma.user.findUnique = vi.fn(async () => ({ id: 'guest-1', name: 'Pendente', avatarUrl: '♠' }));
+    h.prisma.roomParticipant.findUnique.mockResolvedValueOnce(null);
+    await h.gateway.decideJoinRequest(po.client as any, { requestId: 'jr1', decision: 'approved' });
+
+    expect(h.prisma.roomParticipant.create.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({
+      data: expect.objectContaining({ roomId: 'room-1', userId: 'guest-1', role: 'Dev' }),
+    }));
+    expect(latestRoomState(h)?.participants.some((p: any) => p.userId === 'guest-1')).toBe(true);
   });
 });

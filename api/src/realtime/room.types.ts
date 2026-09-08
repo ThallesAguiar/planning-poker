@@ -54,6 +54,7 @@ export const defaultConfig: RoomConfig = {
   maxParticipantes: 12,
   votoAnonimo: false,
   revelacaoAutomatica: false,
+  requireJoinApproval: false,
   criterioConsenso: 'decisao_po',
   papeisPermitidos: ['PO', 'Dev', 'QA', 'ScrumMaster', 'Observador', 'IA_Agente'],
 };

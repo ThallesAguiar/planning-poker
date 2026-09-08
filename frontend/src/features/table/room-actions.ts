@@ -1,6 +1,6 @@
 import { socket } from '../../lib/socket';
 import { useAppStore } from '../../stores/app-store';
-import type { ConsensusCriterion, ParticipantRole, ParticipantStatus, VoteValue } from '@planning-poker/shared-types';
+import type { ConsensusCriterion, ParticipantRole, ParticipantStatus, RoomConfig, RoomVisibility, VoteValue } from '@planning-poker/shared-types';
 
 export function castVote(storyId: string, value: VoteValue, justification?: string) {
   useAppStore.getState().setRoomError(null);
@@ -69,9 +69,19 @@ export function decideRoleChange(requestId: string, decision: 'approved' | 'reje
   socket.emit('room:profileDecision', { requestId, decision });
 }
 
-export function configureRoom(patch: Record<string, unknown>) {
+export function configureRoom(payload: { config?: Partial<RoomConfig>; visibility?: RoomVisibility; password?: string }) {
   useAppStore.getState().setRoomError(null);
-  socket.emit('room:configure', { config: patch });
+  socket.emit('room:configure', payload);
+}
+
+export function listJoinRequests() {
+  useAppStore.getState().setRoomError(null);
+  socket.emit('room:listJoinRequests');
+}
+
+export function decideJoinRequest(requestId: string, decision: 'approved' | 'rejected') {
+  useAppStore.getState().setRoomError(null);
+  socket.emit('room:decideJoinRequest', { requestId, decision });
 }
 
 export function removeParticipant(participantId: string) {

@@ -23,6 +23,7 @@ export type RoomConfig = {
   maxParticipantes: number;
   votoAnonimo: boolean;
   revelacaoAutomatica: boolean;
+  requireJoinApproval: boolean;
   criterioConsenso: ConsensusCriterion;
   papeisPermitidos?: ParticipantRole[];
   permiteRevotoIlimitado?: boolean;
@@ -34,6 +35,10 @@ export type AccountRoom = { id: string; code: string; name: string; status: Room
 export type Participant = { id: string; userId?: string; name: string; avatar: string; role: ParticipantRole; isAI: boolean; connected: boolean; hasVoted: boolean; status?: ParticipantStatus };
 export type RoomProfileUpdate = { name?: string; avatar?: string };
 export type RoomRoleChangeRequest = { id: string; requesterParticipantId: string; requesterName?: string; currentRole: ParticipantRole; requestedRole: ParticipantRole; status: 'pending' | 'approved' | 'rejected' | 'cancelled'; createdAt: string; decidedAt?: string | null };
+export type RoomJoinRequest = { id: string; name: string; avatar?: string | null; requestedRole: ParticipantRole; status: 'pending' | 'approved' | 'rejected' | 'cancelled'; createdAt: string; decidedAt?: string | null };
+export type JoinRoomPendingResponse = { status: 'pending'; joinRequestId: string; message: string };
+export type JoinRoomApprovedResponse = { status?: 'approved'; token: string; sessionId: string; participantId: string; roomId: string; role: ParticipantRole; reusedMembership?: boolean };
+export type JoinRoomResponse = JoinRoomPendingResponse | JoinRoomApprovedResponse;
 export type Story = { id: string; title: string; description: string; order: number; status: StoryStatus; finalValue?: VoteValue | null; criterion?: string | null; rounds: number };
 export type ChatMessage = { id: string; author: string; role: ParticipantRole; text: string; type: 'commentario' | 'justificativa' | 'sistema' | 'ia'; createdAt: string };
 export type VoteReveal = { participantId: string; participantName: string; value: VoteValue; justification?: string | null };
@@ -52,7 +57,9 @@ export type ClientToServerEvents = {
   'room:profileUpdate': (payload: RoomProfileUpdate) => void;
   'room:roleChangeRequest': (payload: { role: ParticipantRole }) => void;
   'room:profileDecision': (payload: { requestId: string; decision: 'approved' | 'rejected' }) => void;
-  'room:configure': (payload: { config: Partial<RoomConfig> }) => void;
+  'room:configure': (payload: { config?: Partial<RoomConfig>; visibility?: RoomVisibility; password?: string }) => void;
+  'room:listJoinRequests': () => void;
+  'room:decideJoinRequest': (payload: { requestId: string; decision: 'approved' | 'rejected' }) => void;
   'room:transferOwner': (payload: { participantId: string }) => void;
   'room:removeParticipant': (payload: { participantId: string }) => void;
   'room:setParticipantStatus': (payload: { participantId: string; status: ParticipantStatus }) => void;
@@ -76,6 +83,8 @@ export type ServerToClientEvents = {
   'room:participantUpdate': (payload: ParticipantUpdate) => void;
   'room:profileRequestPending': (payload: RoomRoleChangeRequest) => void;
   'room:profileDecision': (payload: { requestId: string; decision: 'approved' | 'rejected'; decidedAt: string }) => void;
+  'room:joinRequests': (payload: { requests: RoomJoinRequest[] }) => void;
+  'room:joinRequestDecision': (payload: { requestId: string; decision: 'approved' | 'rejected'; decidedAt: string }) => void;
   'room:kicked': (payload: { code?: RoomErrorCode; message?: string }) => void;
   'timer:tick': (payload: { type: TimerType; remainingSeconds: number }) => void;
   'timer:start': (payload: { type: TimerType; duracaoSegundos: number; deadline?: string }) => void;

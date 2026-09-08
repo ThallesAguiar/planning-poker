@@ -84,9 +84,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
     setSelfId,
     setAiStatus,
     setRoomError,
+    setRoleRequests,
   } = useAppStore();
   const sessionScope = account?.id ?? "guest";
-  const roomStorageKey = (kind: "token" | "session" | "participant" | "pending-join" | "password", target: string) =>
+  const roomStorageKey = (kind: "token" | "session" | "participant" | "pending-join" | "password" | "join-request", target: string) =>
     `planning-poker-${kind}:${sessionScope}:${target}`;
   const [roomId, setRoomId] = useState(routeCode || "planning-demo");
   const [name, setName] = useState(
@@ -112,6 +113,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
   const [accountPassword, setAccountPassword] = useState("");
   const [accountError, setAccountError] = useState("");
   const [joined, setJoined] = useState(false);
+  const [waitingApproval, setWaitingApproval] = useState<{ roomCode: string; requestId: string } | null>(null);
   const joinedRef = useRef(false);
   const restoreAttemptedFor = useRef("");
   const pendingConnectHandler = useRef<(() => void) | null>(null);
@@ -133,6 +135,7 @@ export function App({ mode }: { mode: "home" | "room" }) {
         return;
       }
       setState(next);
+      setRoleRequests(next?.roleRequests ?? []);
       setJoined(true);
       joinedRef.current = true;
       setRestoringRoom(false);
@@ -166,7 +169,6 @@ export function App({ mode }: { mode: "home" | "room" }) {
     const kicked = (payload: { message?: string }) => {
       useAppStore.getState().setRoomError({ code: "REMOVED", message: payload.message ?? "Voce foi removido desta sala." });
       localStorage.removeItem(roomStorageKey("token", routeCode));
-      localStorage.removeItem(roomStorageKey("session", routeCode));
       localStorage.removeItem(roomStorageKey("participant", routeCode));
       sessionStorage.removeItem(roomStorageKey("pending-join", routeCode));
       sessionStorage.removeItem(roomStorageKey("password", routeCode));
@@ -177,6 +179,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
       if (mode === "room") navigate("/");
     };
     const participantUpdate = (payload: any) => {
+      if (payload.reason === "removed") {
+        useAppStore.getState().removeParticipant(payload.participant.id);
+        return;
+      }
       useAppStore.getState().patchParticipant(payload.participant);
     };
     const ai = (next: { status: "voted" | "discussing" | "discussed" | "unavailable" | "error" | "idle" | "voting" }) =>
@@ -194,6 +200,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
     const roleDecision = (payload: { requestId: string; decision: "approved" | "rejected" }) => {
       useAppStore.getState().resolveRoleRequest(payload.requestId);
     };
+    const joinRequests = (payload: any) => useAppStore.getState().setJoinRequests(payload.requests ?? []);
+    const joinRequestDecision = (payload: { requestId: string; decision: "approved" | "rejected" }) => {
+      useAppStore.getState().resolveJoinRequest(payload.requestId);
+    };
 
     socket.on("room:state", update);
     socket.on("room:error", error);
@@ -206,6 +216,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
     socket.on("vote:reveal", reveal);
     socket.on("room:profileRequestPending", roleRequestPending);
     socket.on("room:profileDecision", roleDecision);
+    socket.on("room:joinRequests", joinRequests);
+    socket.on("room:joinRequestDecision", joinRequestDecision);
     socket.on("connect", () => {
       joinedRef.current = true;
       useAppStore.getState().setConnectionStatus("connected");
@@ -224,8 +236,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
       socket.off("vote:reveal", reveal);
       socket.off("room:profileRequestPending", roleRequestPending);
       socket.off("room:profileDecision", roleDecision);
+      socket.off("room:joinRequests", joinRequests);
+      socket.off("room:joinRequestDecision", joinRequestDecision);
     };
-  }, [clearState, mode, routeCode, setState, setAiStatus]);
+  }, [clearState, mode, routeCode, setState, setAiStatus, setRoleRequests]);
 
   useEffect(() => {
     if (!account) return;
@@ -249,6 +263,12 @@ export function App({ mode }: { mode: "home" | "room" }) {
     joinedRef.current = false;
     const storedPid = localStorage.getItem(roomStorageKey("participant", routeCode));
     if (storedPid) setSelfId(storedPid);
+    const joinRequestId = localStorage.getItem(roomStorageKey("join-request", routeCode));
+    if (joinRequestId) {
+      setWaitingApproval({ roomCode: routeCode, requestId: joinRequestId });
+      setRestoringRoom(false);
+      return;
+    }
     setRestoringRoom(
       Boolean(
         localStorage.getItem(roomStorageKey("token", routeCode)) ||
@@ -279,6 +299,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
     let participantId = localStorage.getItem(roomStorageKey("participant", target)) ?? "";
 
     if (!token) {
+      if (!sessionId) {
+        sessionId = crypto.randomUUID();
+        localStorage.setItem(roomStorageKey("session", target), sessionId);
+      }
       const response = await fetch(`${API}/rooms/${encodeURIComponent(target)}/join`, {
         method: "POST",
         headers: { "content-type": "application/json", ...authHeaders(accountToken) },
@@ -287,11 +311,19 @@ export function App({ mode }: { mode: "home" | "room" }) {
           avatar,
           role: "Dev",
           password: password || undefined,
+          sessionId,
         }),
       });
 
       if (response.status === 404) {
         setJoinError("Sala nao encontrada.");
+        setRestoringRoom(false);
+        return false;
+      } else if (response.status === 202) {
+        const pending = await response.json();
+        localStorage.setItem(roomStorageKey("join-request", target), pending.joinRequestId);
+        setWaitingApproval({ roomCode: target, requestId: pending.joinRequestId });
+        setJoinError("");
         setRestoringRoom(false);
         return false;
       } else if (!response.ok) {
@@ -389,6 +421,37 @@ export function App({ mode }: { mode: "home" | "room" }) {
     }
     return confirmed;
   };
+
+  useEffect(() => {
+    if (!waitingApproval) return;
+    let cancelled = false;
+    const check = async () => {
+      const response = await fetch(`${API}/rooms/${encodeURIComponent(waitingApproval.roomCode)}/join-requests/${encodeURIComponent(waitingApproval.requestId)}`);
+      if (!response.ok || cancelled) return;
+      const status = await response.json();
+      if (status.status === "approved") {
+        localStorage.setItem(roomStorageKey("token", waitingApproval.roomCode), status.token);
+        localStorage.setItem(roomStorageKey("session", waitingApproval.roomCode), status.sessionId);
+        localStorage.setItem(roomStorageKey("participant", waitingApproval.roomCode), status.participantId);
+        localStorage.removeItem(roomStorageKey("join-request", waitingApproval.roomCode));
+        setSelfId(status.participantId);
+        const roomCode = waitingApproval.roomCode;
+        setWaitingApproval(null);
+        await connectRoom(roomCode, roomPassword);
+        if (mode === "home") navigate(`/room/${encodeURIComponent(roomCode)}`);
+      } else if (status.status === "rejected") {
+        localStorage.removeItem(roomStorageKey("join-request", waitingApproval.roomCode));
+        setWaitingApproval(null);
+        setJoinError("Host recusou sua entrada na sala.");
+      }
+    };
+    void check();
+    const timer = window.setInterval(() => void check(), 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [waitingApproval, mode, navigate, roomPassword, setSelfId]);
 
   const join = async (event: FormEvent) => {
     event.preventDefault();
@@ -509,6 +572,20 @@ export function App({ mode }: { mode: "home" | "room" }) {
     joined &&
     Boolean(state && isSameRoom(state.code, state.roomId, routeCode));
   const isRoomEntry = mode === "room" && !hasConfirmedRoom && !restoringRoom;
+
+  if (waitingApproval)
+    return (
+      <main className="restoring-shell">
+        <div className="restoring-card waiting-card" aria-live="polite">
+          <div className="brand-mark">♠</div>
+          <h2>Aguardando aprovacao</h2>
+          <span className="restoring-spinner" aria-hidden="true" />
+          <p className="room-loading-copy">
+            Pedido enviado. O host precisa aprovar sua entrada na sala.
+          </p>
+        </div>
+      </main>
+    );
 
   if (mode === "room" && restoringRoom && !hasConfirmedRoom)
     return (

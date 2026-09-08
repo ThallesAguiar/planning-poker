@@ -39,6 +39,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   participants RoomParticipant[]
+  joinRequests RoomJoinRequest[]
+  removedIdentities RoomRemovedIdentity[]
   llmProviders LlmProvider[]
   aiAgent AiAgent?
   businessRules BusinessRule[]
@@ -86,6 +88,8 @@ model Room {
   config RoomConfig?
   participants RoomParticipant[]
   roleChangeRequests RoomRoleChangeRequest[]
+  joinRequests RoomJoinRequest[]
+  removedIdentities RoomRemovedIdentity[]
   stories Story[]
   messages ChatMessage[]
   reports SprintReport[]
@@ -103,6 +107,7 @@ model RoomConfig {
   papeisPermitidos Json
   votoAnonimo Boolean @default(false)
   revelacaoAutomatica Boolean @default(false)
+  requireJoinApproval Boolean @default(false)
   criterioConsenso String @default("decisao_po")
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }
@@ -123,6 +128,37 @@ model RoomParticipant {
   messages ChatMessage[]
   roleRequests RoomRoleChangeRequest[] @relation("RoleRequester")
   roleDecisions RoomRoleChangeRequest[] @relation("RoleDecider")
+  joinDecisions RoomJoinRequest[] @relation("JoinRequestDecider")
+  removedIdentities RoomRemovedIdentity[] @relation("RemovedIdentityActor")
+  @@unique([roomId, userId])
+}
+
+model RoomJoinRequest {
+  id String @id @default(cuid())
+  roomId String
+  userId String?
+  name String
+  avatar String?
+  requestedRole ParticipantRole
+  status String @default("pending")
+  decidedByParticipantId String?
+  createdAt DateTime @default(now())
+  decidedAt DateTime?
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  decidedBy RoomParticipant? @relation("JoinRequestDecider", fields: [decidedByParticipantId], references: [id], onDelete: SetNull)
+  @@index([roomId, status])
+}
+
+model RoomRemovedIdentity {
+  id String @id @default(cuid())
+  roomId String
+  userId String
+  removedByParticipantId String?
+  createdAt DateTime @default(now())
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  removedBy RoomParticipant? @relation("RemovedIdentityActor", fields: [removedByParticipantId], references: [id], onDelete: SetNull)
   @@unique([roomId, userId])
 }
 model RoomRoleChangeRequest {

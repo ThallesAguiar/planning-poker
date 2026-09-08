@@ -46,6 +46,10 @@ export class JoinRoomDto {
   @IsOptional()
   @IsString()
   password?: string;
+
+  @IsOptional()
+  @IsString()
+  sessionId?: string;
 }
 
 export class UpdateRoomProfileDto {
@@ -66,6 +70,15 @@ export class RequestRoleChangeDto {
 }
 
 export class DecideRoleChangeDto {
+  @IsString()
+  requestId!: string;
+
+  @IsString()
+  @IsIn(['approved', 'rejected'])
+  decision!: 'approved' | 'rejected';
+}
+
+export class DecideJoinRequestDto {
   @IsString()
   requestId!: string;
 

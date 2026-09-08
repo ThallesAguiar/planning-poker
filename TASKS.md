@@ -39,6 +39,8 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Namespace `/room` definido no contrato.
 - [x] Cliente frontend corrigido para conectar em `/room`.
 - [x] Tipos de visibilidade publica/privada e senha opcional no ingresso.
+- [x] Contrato `room:configure` aceita alteracao de visibilidade publica/privada e senha pelo PO.
+- [x] Tipos compartilhados para sala de espera: `requireJoinApproval`, `RoomJoinRequest` e eventos de decisao/listagem.
 
 ### Pendente
 
@@ -70,6 +72,8 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Criar seed com 5 participantes (host + 4) e 1 IA via `npm run db:seed` (idempotente).
 - [x] Implementar consultas de historico e relatorios anteriores (`listForRoom` + `GET /reports/:id`).
 - [x] Schema/migration de autenticacao de usuario, perfil por sala, `lastSeenAt` e solicitacao de papel adicionados; migration aplicada em banco real.
+- [x] Alteracao de visibilidade/senha da sala reutiliza `Room.visibility` e `Room.passwordHash`, persistindo a troca sem nova migration.
+- [x] Sala de espera persistida com `RoomJoinRequest`, flag `RoomConfig.requireJoinApproval` e registro leve de removidos em `RoomRemovedIdentity`.
 
 ## 4. Backend NestJS e REST
 
@@ -121,6 +125,8 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Integrar Redis adapter para multiplas instancias.
 - [x] Implementar `room:participantUpdate` dedicado com payload de presenca.
 - [x] Implementar `room:configure` com validacao expandida de todos os campos.
+- [x] `room:configure` permite ao PO trocar sala entre publica/privada e definir/limpar senha; privacidade pode mudar com rodada em andamento, configs de jogo seguem restritas ao lobby.
+- [x] Eventos `room:listJoinRequests` e `room:decideJoinRequest` permitem ao PO listar, aprovar e recusar pedidos de entrada.
 - [x] Implementar `story:present`.
 - [x] Implementar `round.service.ts` com transicoes de fase, persistencia e timers; `resumeFromStorage` restaura timers apos reload.
 - [x] Emitir `timer:start`, `timer:tick` e `discussion:start`.
@@ -224,6 +230,10 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Teste visual e responsivo em desktop e mobile (Playwright com viewport 390x844).
 - [x] Login/cadastro basico, sessao de conta, `Minhas Salas` via API e rejoin por conta adicionados sem redesenho amplo; testes Playwright aprovados.
 - [x] Painel de participantes com moderacao (remover, afastar/reativar, transferir PO).
+- [x] Modal de configuracao da sala permite ao PO alternar sala publica/privada, definir senha e remover participantes tambem em layout mobile.
+- [x] Campo de senha no modal de configuracao da sala segue o padrao visual dos demais inputs e ganhou icone de cadeado.
+- [x] Modal de configuracao da sala possui toggle `Exigir aprovacao para entrar`, lista pedidos pendentes e permite aprovar/recusar; solicitante ve tela aguardando aprovacao.
+- [x] Solicitacoes de troca de papel sao sincronizadas a partir de `room:state` e tambem aparecem no modal de configuracao da sala para aprovacao do PO.
 - [x] Status de IA: idle, voting, voted, unavailable, error.
 - [x] Regras reais da sala vindas do backend (deck, tempos, IA, voto anonimo, revelacao automatica).
 - [x] Testes E2E: rodada completa com duas sessoes, presenca/remocao/reconexao, viewport mobile.
@@ -309,6 +319,11 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Frontend: header mobile ganhou menu colapsavel para esconder as acoes ate o usuario abrir; `npm run build` e `npm run lint` revalidados.
 - [x] Frontend: header desktop voltou a mostrar as acoes sempre abertas e o menu colapsavel ficou restrito ao mobile; `npm run build` e `npm run lint` revalidados.
 - [x] Frontend: a acao `Config` no header ficou visivel apenas para PO; contas comuns veem so `Perfil` e as acoes gerais; `npm run build` e `npm run lint` revalidados.
+- [x] API/frontend/shared-types: `room:configure` expandido para privacidade/senha e remocao de participantes exposta no modal de configuracao; API `npm run build`, API `npm run lint`, API `npm test -- room.gateway.spec.ts`, Frontend `npm run build` e Frontend `npm run lint` executados.
+- [x] Frontend: campo de senha do modal de configuracao padronizado com os demais inputs e icone de cadeado em CSS; `npm run build` e `npm run lint` revalidados.
+- [x] Frontend: `room:participantUpdate` com motivo `removed` agora remove o participante do Zustand em vez de fazer upsert; `npm run build` e `npm run lint` revalidados.
+- [x] Sala de espera: `npx prisma validate`, `npx prisma generate`, `npx prisma migrate deploy`, API `npm run build`, API `npm run lint`, API `npm test -- room.service.spec.ts`, API `npm test -- room.gateway.spec.ts`, Frontend `npm run build` e Frontend `npm run lint` executados.
+- [x] Frontend: `room:state` agora popula `roleRequests` no Zustand e `RoomConfiguration` mostra solicitacoes de papel; `npm run build` e `npm run lint` revalidados.
 - [x] Frontend: justificativas ganharam modal de leitura completa com backdrop blur, travamento do fundo e fechamento por clique/Esc; `npm run build` e `npm run lint` revalidados.
 - [ ] Conferir visualmente o modal de justificativa com seis participantes e textos longos em desktop e mobile; a leitura completa agora sai do felt, mas ainda falta smoke visual dedicado.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos corrigir normalizacao do caminho de entrada em sala.

@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcrypt';
 import { PrismaService } from './prisma.service.js';
 import { SessionService } from './auth/session.service.js';
+import type { ParticipantRole, RoomJoinRequest } from '@planning-poker/shared-types';
 
 const deck = [1, 2, 3, 5, 8, 13, 20, 40, 100, 'café', '?'];
 // Mesma lista de room.gateway.ts (ALLOWED_CONSENSUS) — manter em sincronia.
@@ -19,6 +20,7 @@ type NewRoomConfigDefaults = {
   iaDiscute?: boolean;
   votoAnonimo?: boolean;
   revelacaoAutomatica?: boolean;
+  requireJoinApproval?: boolean;
   criterioConsenso?: string;
   deckType?: string;
   deckValues?: Array<number | string>;
@@ -33,7 +35,7 @@ function sanitizeRoomConfigDefaults(raw?: Record<string, unknown>): NewRoomConfi
     if (Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 3600) out[key] = value as number;
   }
   if (Number.isInteger(raw.maxParticipantes) && (raw.maxParticipantes as number) >= 1 && (raw.maxParticipantes as number) <= 50) out.maxParticipantes = raw.maxParticipantes as number;
-  const booleanKeys = ['permiteParticipantesIA', 'iaDiscute', 'votoAnonimo', 'revelacaoAutomatica'] as const;
+  const booleanKeys = ['permiteParticipantesIA', 'iaDiscute', 'votoAnonimo', 'revelacaoAutomatica', 'requireJoinApproval'] as const;
   for (const key of booleanKeys) {
     if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean;
   }
@@ -85,10 +87,15 @@ export class RoomService {
     }));
   }
 
-  async joinSession(idOrCode: string, name: string, avatar = '', role = 'Dev', password?: string, accountUserId?: string) {
+  async joinSession(idOrCode: string, name: string, avatar = '', role = 'Dev', password?: string, accountUserId?: string, guestSessionId?: string) {
     const room = await this.prisma.room.findFirst({ where: { OR: [{ id: idOrCode }, { inviteCode: idOrCode.toUpperCase() }] }, include: { config: true } });
     if (!room) throw new NotFoundException('Room not found');
-    const existingMembership = accountUserId ? await this.prisma.roomParticipant.findUnique({ where: { roomId_userId: { roomId: room.id, userId: accountUserId } } }) : null;
+    const session = accountUserId ? { sessionId: accountUserId } : { sessionId: guestSessionId?.trim() || this.sessions.issueGuest(room.id).sessionId };
+    const user = accountUserId
+      ? await this.prisma.user.findUnique({ where: { id: accountUserId } })
+      : await this.prisma.user.upsert({ where: { id: session.sessionId }, update: { name, avatarUrl: avatar }, create: { id: session.sessionId, name, avatarUrl: avatar, isGuest: true } });
+    if (!user) throw new ForbiddenException('UNAUTHENTICATED');
+    const existingMembership = await this.prisma.roomParticipant.findUnique({ where: { roomId_userId: { roomId: room.id, userId: user.id } } });
     if (!existingMembership && room.visibility === 'PRIVATE' && (!password || !room.passwordHash || !(await bcrypt.compare(password, room.passwordHash)))) throw new BadRequestException('Invalid room access');
     const config = room.config;
     const allowedRoles = (config?.papeisPermitidos as string[] | undefined) ?? ['PO', 'Dev', 'QA', 'ScrumMaster', 'Observador', 'IA_Agente'];
@@ -104,11 +111,14 @@ export class RoomService {
     const count = await this.prisma.roomParticipant.count({ where: { roomId: room.id, status: 'ativo' } });
     if (count >= (config?.maxParticipantes ?? 12)) throw new BadRequestException('Room is full');
     if (count === 0) role = 'PO';
-    const session = accountUserId ? { sessionId: accountUserId } : this.sessions.issueGuest(room.id);
-    const user = accountUserId
-      ? await this.prisma.user.findUnique({ where: { id: accountUserId } })
-      : await this.prisma.user.create({ data: { id: session.sessionId, name, avatarUrl: avatar, isGuest: true } });
-    if (!user) throw new ForbiddenException('UNAUTHENTICATED');
+    const removed = await this.prisma.roomRemovedIdentity.findUnique({ where: { roomId_userId: { roomId: room.id, userId: user.id } } });
+    if (count > 0 && ((config as any)?.requireJoinApproval || removed)) {
+      const pending = await this.prisma.roomJoinRequest.findFirst({ where: { roomId: room.id, userId: user.id, status: 'pending' }, orderBy: { createdAt: 'desc' } });
+      const request = pending ?? await this.prisma.roomJoinRequest.create({
+        data: { roomId: room.id, userId: user.id, name: accountUserId ? user.name : name, avatar: accountUserId ? user.avatarUrl : avatar, requestedRole: role as any },
+      });
+      return { status: 'pending' as const, joinRequestId: request.id, message: 'Aguardando aprovacao do host.' };
+    }
     const identityName = accountUserId ? user.name : name;
     const identityAvatar = accountUserId ? (user.avatarUrl ?? '') : avatar;
     const participant = await this.prisma.roomParticipant.create({
@@ -117,6 +127,50 @@ export class RoomService {
     if (room.ownerId === 'pending') await this.prisma.room.update({ where: { id: room.id }, data: { ownerId: participant.id } });
     const issued = this.sessions.issueGuest(room.id, participant.id, session.sessionId);
     return { token: issued.token, sessionId: issued.sessionId, participantId: participant.id, roomId: room.id, role: participant.role, reusedMembership: false };
+  }
+
+  async getJoinRequestStatus(idOrCode: string, requestId: string) {
+    const room = await this.prisma.room.findFirst({ where: { OR: [{ id: idOrCode }, { inviteCode: idOrCode.toUpperCase() }] } });
+    if (!room) throw new NotFoundException('Room not found');
+    const request = await this.prisma.roomJoinRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.roomId !== room.id) throw new NotFoundException('Join request not found');
+    if (request.status !== 'approved') return this.serializeJoinRequest(request);
+    if (!request.userId) throw new ForbiddenException('FORBIDDEN');
+    const participant = await this.prisma.roomParticipant.findUnique({ where: { roomId_userId: { roomId: room.id, userId: request.userId } } });
+    if (!participant) return this.serializeJoinRequest(request);
+    const issued = this.sessions.issueGuest(room.id, participant.id, request.userId);
+    return { status: 'approved' as const, token: issued.token, sessionId: issued.sessionId, participantId: participant.id, roomId: room.id, role: participant.role };
+  }
+
+  async listJoinRequests(roomId: string): Promise<RoomJoinRequest[]> {
+    const requests = await this.prisma.roomJoinRequest.findMany({ where: { roomId, status: 'pending' }, orderBy: { createdAt: 'asc' } });
+    return requests.map((request) => this.serializeJoinRequest(request));
+  }
+
+  async decideJoinRequest(roomId: string, hostParticipantId: string, requestId: string, decision: 'approved' | 'rejected') {
+    const room = await this.prisma.room.findUnique({ where: { id: roomId }, include: { config: true } });
+    if (!room || room.ownerId !== hostParticipantId) throw new ForbiddenException('FORBIDDEN');
+    const request = await this.prisma.roomJoinRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.roomId !== roomId || request.status !== 'pending') throw new NotFoundException('PROFILE_REQUEST_NOT_FOUND');
+    const decidedAt = new Date();
+    if (decision === 'rejected') {
+      const rejected = await this.prisma.roomJoinRequest.update({ where: { id: request.id }, data: { status: 'rejected', decidedByParticipantId: hostParticipantId, decidedAt } });
+      return { request: this.serializeJoinRequest(rejected), participant: null };
+    }
+    if (!request.userId) throw new ForbiddenException('FORBIDDEN');
+    const count = await this.prisma.roomParticipant.count({ where: { roomId, status: 'ativo' } });
+    if (count >= (room.config?.maxParticipantes ?? 12)) throw new BadRequestException('Room is full');
+    const user = await this.prisma.user.findUnique({ where: { id: request.userId } });
+    if (!user) throw new ForbiddenException('UNAUTHENTICATED');
+    let participant = await this.prisma.roomParticipant.findUnique({ where: { roomId_userId: { roomId, userId: user.id } } });
+    if (!participant) {
+      participant = await this.prisma.roomParticipant.create({
+        data: { roomId, userId: user.id, role: request.requestedRole, roomDisplayName: request.name, roomAvatarUrl: request.avatar ?? '' },
+      });
+    }
+    await this.prisma.roomRemovedIdentity.deleteMany({ where: { roomId, userId: user.id } });
+    const approved = await this.prisma.roomJoinRequest.update({ where: { id: request.id }, data: { status: 'approved', decidedByParticipantId: hostParticipantId, decidedAt } });
+    return { request: this.serializeJoinRequest(approved), participant };
   }
 
   async rejoinSession(idOrCode: string, userId: string) {
@@ -212,6 +266,18 @@ export class RoomService {
       decision,
       decidedAt: decidedAt.toISOString(),
       requestedRole: updated.requestedRole,
+    };
+  }
+
+  private serializeJoinRequest(request: { id: string; name: string; avatar?: string | null; requestedRole: unknown; status: string; createdAt: Date; decidedAt?: Date | null }): RoomJoinRequest {
+    return {
+      id: request.id,
+      name: request.name,
+      avatar: request.avatar ?? null,
+      requestedRole: request.requestedRole as ParticipantRole,
+      status: request.status as RoomJoinRequest['status'],
+      createdAt: request.createdAt.toISOString(),
+      decidedAt: request.decidedAt?.toISOString() ?? null,
     };
   }
 
