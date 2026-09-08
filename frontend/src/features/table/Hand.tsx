@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { castVote, useSelf } from './room-actions';
+import { castVote, forceReveal, useSelf } from './room-actions';
 
 export function Hand() {
-  const { state, currentStory, canVote, hasVoted, isObserver, phase } = useSelf();
+  const { state, currentStory, canVote, hasVoted, isObserver, isPO, canReveal, phase } = useSelf();
   const [selected, setSelected] = useState<number | string | null>(null);
   const [justification, setJustification] = useState('');
   const deck = state?.config.deckValues ?? [];
@@ -49,20 +49,27 @@ export function Hand() {
           onChange={(event) => setJustification(event.target.value)}
         />
       )}
-      <button
-        className="primary play-card"
-        type="button"
-        disabled={selected === null || !playable}
-        onClick={() => {
-          if (selected !== null && currentStory) {
-            castVote(currentStory.id, selected as never, justification.trim() || undefined);
-            setSelected(null);
-            setJustification('');
-          }
-        }}
-      >
-        Jogar carta <span aria-hidden="true">↑</span>
-      </button>
+      <div className="hand-actions">
+        <button
+          className="primary play-card"
+          type="button"
+          disabled={selected === null || !playable}
+          onClick={() => {
+            if (selected !== null && currentStory) {
+              castVote(currentStory.id, selected as never, justification.trim() || undefined);
+              setSelected(null);
+              setJustification('');
+            }
+          }}
+        >
+          Jogar carta <span aria-hidden="true">↑</span>
+        </button>
+        {isPO && (
+          <button className="secondary reveal-card" type="button" disabled={!canReveal} onClick={forceReveal}>
+            Revelar cartas
+          </button>
+        )}
+      </div>
     </motion.div>
   );
 }

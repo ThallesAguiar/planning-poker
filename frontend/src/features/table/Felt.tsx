@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAppStore } from '../../stores/app-store';
 import { AIParticipant } from './AIParticipant';
-import { finalizeStory, forceReveal, requestAiSummarize, requestAiVote, revote, sendReaction, skipStory, useSelf } from './room-actions';
+import { finalizeStory, requestAiSummarize, requestAiVote, revote, sendReaction, skipStory, useSelf } from './room-actions';
 import type { ConsensusCriterion } from '@planning-poker/shared-types';
 
 const REACTIONS = ['👍', '🤔', '😅', '🔥'] as const;
@@ -20,7 +20,7 @@ function revealedJustification(state: ReturnType<typeof useSelf>['state'], parti
 }
 
 export function Felt() {
-  const { state, selfId, isPO, currentStory, votingCount, canReveal, phase } = useSelf();
+  const { state, selfId, isPO, currentStory, votingCount, phase } = useSelf();
   const aiStatus = useAppStore((s) => s.aiStatus);
   const reactions = useAppStore((s) => s.reactions);
   const confetti = useAppStore((s) => s.confetti);
@@ -181,108 +181,108 @@ export function Felt() {
         )}
       </AnimatePresence>
 
-      <div className="progress">
-        <div>
-          <span>
-            {votingCount.voted} de {votingCount.total} jogaram
-          </span>
-          <b>{votingCount.total ? Math.round((votingCount.voted / votingCount.total) * 100) : 0}%</b>
+      <div className="felt-footer">
+        <div className="progress">
+          <div>
+            <span>
+              {votingCount.voted} de {votingCount.total} jogaram
+            </span>
+            <b>{votingCount.total ? Math.round((votingCount.voted / votingCount.total) * 100) : 0}%</b>
+          </div>
+          <div className="progress-track">
+            <motion.i animate={{ width: `${votingCount.total ? Math.round((votingCount.voted / votingCount.total) * 100) : 0}%` }} />
+          </div>
         </div>
-        <div className="progress-track">
-          <motion.i animate={{ width: `${votingCount.total ? Math.round((votingCount.voted / votingCount.total) * 100) : 0}%` }} />
-        </div>
-      </div>
 
-      <div className="table-actions">
-        {isPO && (
-          <>
-            <button className="secondary" type="button" disabled={!canReveal && !revealed} onClick={forceReveal}>
-              Revelar cartas
+        <div className="table-actions">
+          <div className="reaction-bar" ref={reactionRef}>
+            <button type="button" className="reaction-trigger" onClick={() => setReactionOpen((v) => !v)} title="Enviar reacao">
+              Reagir
             </button>
-            {(phase === 'discussao' || phase === 'revelada') && (
-              <>
-                <button className="secondary" type="button" onClick={() => void revote()}>
-                  Revotar
-                </button>
-                <div className="finalize-wrap">
-                  <button className="primary" type="button" onClick={() => setFinalizing((v) => !v)}>
-                    Finalizar
+            {reactionOpen && (
+              <div className="reaction-palette" role="dialog" aria-label="Reacoes">
+                {REACTIONS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className="reaction-palette-item"
+                    onClick={() => {
+                      sendReaction(value);
+                      setReactionOpen(false);
+                    }}
+                  >
+                    {value}
                   </button>
-                  {finalizing && (
-                    <div className="finalize-popover">
-                      <label>
-                        Valor final
-                        <select value={finalValue} onChange={(e) => setFinalValue(e.target.value)}>
-                          {finalValues.map((value) => (
-                            <option value={value} key={value}>
-                              {value}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        Criterio
-                        <select value={criterion} onChange={(e) => setCriterion(e.target.value as ConsensusCriterion)}>
-                          <option value="decisao_po">Decisao do PO</option>
-                          <option value="unanime">Consenso unanim</option>
-                          <option value="media">Media</option>
-                          <option value="mediana">Mediana</option>
-                        </select>
-                      </label>
-                      <button
-                        className="primary"
-                        type="button"
-                        disabled={finalValues.length === 0}
-                        onClick={() => {
-                          const numeric = Number(finalValue);
-                          const value = Number.isNaN(numeric) ? (finalValue as never) : numeric;
-                          finalizeStory(value, criterion);
-                          setFinalizing(false);
-                        }}
-                      >
-                        Confirmar estimativa
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <button className="secondary" type="button" onClick={() => void skipStory()}>
-                  Pular historia
-                </button>
-              </>
+                ))}
+              </div>
             )}
-            {aiEnabled && phase === 'votacao' && (
-              <AIParticipant enabled={aiEnabled} status={aiStatus} onRequest={requestAiVote} />
-            )}
-            {aiEnabled && aiDiscuss && phase === 'discussao' && (
-              <AIParticipant mode="discuss" enabled={aiEnabled} status={aiStatus} onRequest={requestAiSummarize} />
-            )}
-          </>
-        )}
-        {!isPO && (
-          <span className="admin-hint">
-            {phase === 'votacao' ? 'Vote quando estiver pronto. O PO conduz a revelacao.' : 'Aguardando acao do PO.'}
-          </span>
-        )}
-        <div className="reaction-bar" ref={reactionRef}>
-          <button type="button" className="reaction-trigger" onClick={() => setReactionOpen((v) => !v)} title="Enviar reacao">
-            Reagir
-          </button>
-          {reactionOpen && (
-            <div className="reaction-palette" role="dialog" aria-label="Reacoes">
-              {REACTIONS.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className="reaction-palette-item"
-                  onClick={() => {
-                    sendReaction(value);
-                    setReactionOpen(false);
-                  }}
-                >
-                  {value}
-                </button>
-              ))}
-            </div>
+          </div>
+
+          {isPO && (
+            <>
+              {(phase === 'discussao' || phase === 'revelada') && (
+                <>
+                  <button className="secondary" type="button" onClick={() => void revote()}>
+                    Revotar
+                  </button>
+                  <div className="finalize-wrap">
+                    <button className="primary" type="button" onClick={() => setFinalizing((v) => !v)}>
+                      Finalizar
+                    </button>
+                    {finalizing && (
+                      <div className="finalize-popover">
+                        <label>
+                          Valor final
+                          <select value={finalValue} onChange={(e) => setFinalValue(e.target.value)}>
+                            {finalValues.map((value) => (
+                              <option value={value} key={value}>
+                                {value}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Criterio
+                          <select value={criterion} onChange={(e) => setCriterion(e.target.value as ConsensusCriterion)}>
+                            <option value="decisao_po">Decisao do PO</option>
+                            <option value="unanime">Consenso unanim</option>
+                            <option value="media">Media</option>
+                            <option value="mediana">Mediana</option>
+                          </select>
+                        </label>
+                        <button
+                          className="primary"
+                          type="button"
+                          disabled={finalValues.length === 0}
+                          onClick={() => {
+                            const numeric = Number(finalValue);
+                            const value = Number.isNaN(numeric) ? (finalValue as never) : numeric;
+                            finalizeStory(value, criterion);
+                            setFinalizing(false);
+                          }}
+                        >
+                          Confirmar estimativa
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <button className="secondary" type="button" onClick={() => void skipStory()}>
+                    Pular historia
+                  </button>
+                </>
+              )}
+              {aiEnabled && phase === 'votacao' && (
+                <AIParticipant enabled={aiEnabled} status={aiStatus} onRequest={requestAiVote} />
+              )}
+              {aiEnabled && aiDiscuss && phase === 'discussao' && (
+                <AIParticipant mode="discuss" enabled={aiEnabled} status={aiStatus} onRequest={requestAiSummarize} />
+              )}
+            </>
+          )}
+          {!isPO && (
+            <span className="admin-hint">
+              {phase === 'votacao' ? 'Vote quando estiver pronto. O PO conduz a revelacao.' : 'Aguardando acao do PO.'}
+            </span>
           )}
         </div>
       </div>

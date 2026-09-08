@@ -172,6 +172,9 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Studio LLM passou a exigir token da conta no primeiro cadastro e removeu a mensagem de fallback para variaveis de ambiente.
 - [x] Studio LLM nao limpa mais o token digitado apos salvar, mantendo o valor mascarado na sessao atual.
 - [x] Hover dos avatares do Studio ajustado para evitar acionamento visual do primeiro icone quando outros sao selecionados.
+- [x] Mesa principal reorganizada: historia saiu do felt, e `Revelar`, `Reagir`, progresso e acoes do PO passaram a usar footer empilhado para evitar sobreposicao.
+- [x] Acoes da mesa ajustadas para manter `Revelar cartas` ao lado de `Jogar carta` na mao do jogador; a revelacao saiu da area principal da mesa para evitar duplicidade visual.
+- [x] Botao `Reagir` reposicionado para dentro do bloco de acoes da mesa, deixando de flutuar no canto e ficando agrupado com as demais acoes.
 - [x] Tela raiz organizada em dois cartoes empilhados na coluna direita: `Sua conta` (login/cadastro, `account-card`) acima e `Mesa` (`join-panel` dentro de `home-stack`) abaixo, com estilos proprios para o painel de conta e erro de autenticacao separado (`account-error`); rotulos de senha desambiguados ("Senha da conta" e "Senha da sala").
 - [x] Tela raiz agora mostra um unico card por vez via `card-switch` (abas `Sua conta` e `Mesa`) em vez de empilhar os dois; `homeCard` controla qual card renderiza na home e a rota `/room/:code` continua exibindo apenas a mesa.
 - [x] Card de login (`Sua conta`) passou a ser o padrao na home (`homeCard` inicia em `account`); testes e2e atualizados para abrir a aba `Mesa` quando interagem com a sala.
@@ -279,6 +282,9 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos exigir token da conta no primeiro cadastro do provedor LLM do Studio e remover a mensagem de fallback para ambiente.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos manter o token do provedor visivel na sessao apos salvar.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos ajustar hover dos avatares do Studio para nao sobrepor o primeiro icone.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos reorganizar o footer da mesa para evitar sobreposicao de historia, jogadores e botoes.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos mover `Revelar cartas` para junto de `Jogar carta` na mao do jogador e remover a acao redundante da mesa.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos reposicionar o botao `Reagir` no bloco de acoes da mesa.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos corrigir normalizacao do caminho de entrada em sala.
 - [x] Frontend: `npm run test:e2e` validou em Chromium criacao de sala privada e entrada por codigo+senha direto na mesa.
 - [x] Frontend: `npm run test:e2e -- tests/room-entry.spec.ts --browser=chromium` validou home e rota direta `/room/:code` sem tela legada duplicada.
