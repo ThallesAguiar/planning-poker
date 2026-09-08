@@ -305,6 +305,10 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Frontend: no mobile, os botoes da mesa foram movidos para depois da mao em `frontend/src/features/table/TableScreen.tsx`; smoke Playwright confirmou a ordem `mesa -> mao -> acoes`.
 - [x] Frontend: a mao e a area dos jogadores no mobile foram compactadas em `frontend/src/index.css`; smoke Playwright em 390px confirmou altura menor e ordem correta.
 - [x] Frontend: justificativas no mobile foram alinhadas por lado da mesa em `frontend/src/index.css`; smoke Playwright com fixture confirmou `right` no lado esquerdo e `left` no lado direito.
+- [x] Frontend: header mobile foi reorganizado em blocos empilhados com acoes em chips menores e label de sessao truncada; `npm run build` e `npm run lint` revalidados.
+- [x] Frontend: header mobile ganhou menu colapsavel para esconder as acoes ate o usuario abrir; `npm run build` e `npm run lint` revalidados.
+- [x] Frontend: header desktop voltou a mostrar as acoes sempre abertas e o menu colapsavel ficou restrito ao mobile; `npm run build` e `npm run lint` revalidados.
+- [x] Frontend: a acao `Config` no header ficou visivel apenas para PO; contas comuns veem so `Perfil` e as acoes gerais; `npm run build` e `npm run lint` revalidados.
 - [x] Frontend: justificativas ganharam modal de leitura completa com backdrop blur, travamento do fundo e fechamento por clique/Esc; `npm run build` e `npm run lint` revalidados.
 - [ ] Conferir visualmente o modal de justificativa com seis participantes e textos longos em desktop e mobile; a leitura completa agora sai do felt, mas ainda falta smoke visual dedicado.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos corrigir normalizacao do caminho de entrada em sala.

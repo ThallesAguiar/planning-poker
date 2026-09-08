@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../stores/app-store';
 import { useSelf } from './room-actions';
@@ -21,12 +22,22 @@ export function StatusBar({ onLogout, onOpenSettings }: { onLogout: () => void; 
   const state = useAppStore((s) => s.state);
   const connectionStatus = useAppStore((s) => s.connectionStatus);
   const account = useAppStore((s) => s.account);
-  const self = useSelf().self;
+  const { self, isPO } = useSelf();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth > 700) setMobileMenuOpen(false);
+    };
+
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   return (
     <header className="topbar">
       <div className="wordmark">
-        <span>♠</span> planning poker
+        <span>PP</span> planning poker
       </div>
       <div className="session-title">
         <small>SESSAO AO VIVO</small>
@@ -43,22 +54,53 @@ export function StatusBar({ onLogout, onOpenSettings }: { onLogout: () => void; 
         {state?.timerType && <i className="timer-kind">{state.timerType === 'reflexao' ? 'Reflexao' : 'Discussao'}</i>}
       </div>
 
-      <div className="top-actions">
+      <button
+        type="button"
+        className="mobile-actions-toggle"
+        aria-expanded={mobileMenuOpen}
+        aria-controls="topbar-actions"
+        onClick={() => setMobileMenuOpen((open) => !open)}
+      >
+        Menu
+      </button>
+
+      <div className={`top-actions ${mobileMenuOpen ? 'is-open' : ''}`} id="topbar-actions">
         <span className={`connection-dot ${connectionStatus}`} title={`Socket: ${connectionStatus}`} />
         {connectionStatus === 'reconnecting' && <small className="reconnecting-label">reconectando</small>}
-        <button type="button" onClick={onOpenSettings} title="Configuracoes da sala">
-          ⚙
-        </button>
+        {isPO && (
+          <button
+            type="button"
+            onClick={() => {
+              onOpenSettings();
+              setMobileMenuOpen(false);
+            }}
+            title="Configuracoes da sala"
+          >
+            Config
+          </button>
+        )}
         {account && (
-          <button type="button" onClick={() => navigate('/profile')}>
+          <button
+            type="button"
+            onClick={() => {
+              navigate('/profile');
+              setMobileMenuOpen(false);
+            }}
+          >
             Perfil
           </button>
         )}
-        <button type="button" onClick={onLogout}>
+        <button
+          type="button"
+          onClick={() => {
+            onLogout();
+            setMobileMenuOpen(false);
+          }}
+        >
           Sair
         </button>
         <div className="user-avatar" title={self?.name ?? ''}>
-          {self?.avatar ?? '♠'}
+          {self?.avatar ?? 'PP'}
         </div>
       </div>
     </header>
