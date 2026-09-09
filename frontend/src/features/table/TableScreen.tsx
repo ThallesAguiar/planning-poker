@@ -8,6 +8,7 @@ import { Felt, FeltFooter } from './Felt';
 import { Hand } from './Hand';
 import { ChatPanel } from './ChatPanel';
 import { RoomConfiguration } from '../room/RoomConfiguration';
+import { RoomStudioPanel } from '../room/RoomStudioPanel';
 import { useSelf } from './room-actions';
 
 type ReportSections = { withChat?: boolean; withVotes?: boolean; withRoomNotes?: boolean; withInsights?: boolean };
@@ -21,6 +22,7 @@ function formatSeconds(seconds: number) {
 export function TableScreen({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
   const [configOpen, setConfigOpen] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportSections, setReportSections] = useState<ReportSections>({ withChat: true, withVotes: true, withRoomNotes: true, withInsights: true });
   const { state, isPO } = useSelf();
@@ -56,6 +58,9 @@ export function TableScreen({ onLogout }: { onLogout: () => void }) {
         onOpenSettings={() => {
           if (isPO) setConfigOpen(true);
         }}
+        onOpenStudio={() => {
+          if (isPO) setStudioOpen(true);
+        }}
       />
 
       {roomError && (
@@ -70,6 +75,18 @@ export function TableScreen({ onLogout }: { onLogout: () => void }) {
 
       {configOpen && <RoomConfiguration onClose={() => setConfigOpen(false)} />}
 
+      {studioOpen && (
+        <div className="config-overlay" onClick={() => setStudioOpen(false)}>
+          <section className="config-panel studio-modal-panel ui-scrollbar" onClick={(event) => event.stopPropagation()}>
+            <div className="settings-title">
+              <h3>Studio de IA da sala</h3>
+              <button type="button" className="close-config" onClick={() => setStudioOpen(false)} aria-label="Fechar">×</button>
+            </div>
+            <RoomStudioPanel />
+          </section>
+        </div>
+      )}
+
       <div className="workspace">
         <aside className="sidebar left ui-scrollbar">
           <div className="side-heading">
@@ -80,21 +97,42 @@ export function TableScreen({ onLogout }: { onLogout: () => void }) {
           <StoryPanel />
           <div className="rules">
             <h3>Regras da sala</h3>
-            <p>
-              <b>Deck</b>: {config?.deckValues?.map((v) => String(v)).join(' · ') ?? '-'}
-              <br />
-              Reflexão: {config ? formatSeconds(config.tempoReflexaoSegundos) : '2:00'}
-              <br />
-              Discussão: {config ? formatSeconds(config.tempoDiscussaoSegundos) : '5:00'}
-              <br />
-              Voto anônimo: {config?.votoAnonimo ? 'sim' : 'não'} · IA: {config?.permiteParticipantesIA ? 'sim' : 'não'}
-              <br />
-              Revelação automática: {config?.revelacaoAutomatica ? 'sim' : 'não'}
-            </p>
+            <dl className="rules-list">
+              <div className="rules-row rules-row-deck">
+                <dt>Deck</dt>
+                <dd>{config?.deckValues?.map((v) => String(v)).join(' · ') ?? '-'}</dd>
+              </div>
+              <div className="rules-row">
+                <dt>Reflexão</dt>
+                <dd>{config ? formatSeconds(config.tempoReflexaoSegundos) : '2:00'}</dd>
+              </div>
+              <div className="rules-row">
+                <dt>Discussão</dt>
+                <dd>{config ? formatSeconds(config.tempoDiscussaoSegundos) : '5:00'}</dd>
+              </div>
+              <div className="rules-row">
+                <dt>Voto anônimo</dt>
+                <dd>{config?.votoAnonimo ? 'sim' : 'não'}</dd>
+              </div>
+              <div className="rules-row">
+                <dt>IA</dt>
+                <dd>{config?.permiteParticipantesIA ? 'sim' : 'não'}</dd>
+              </div>
+              <div className="rules-row">
+                <dt>Revelação automática</dt>
+                <dd>{config?.revelacaoAutomatica ? 'sim' : 'não'}</dd>
+              </div>
+            </dl>
             {isPO && (
-              <button type="button" className="config-open-link" onClick={() => setConfigOpen(true)}>
-                ⚙ Configurar sala
-              </button>
+              <div className="config-actions-row">
+                <button type="button" className="config-open-link" onClick={() => setConfigOpen(true)}>
+                  ⚙ Configurar sala
+                </button>
+                <button type="button" className="config-open-link" onClick={() => setStudioOpen(true)}>
+                  <span className="poker-ai-icon" aria-hidden="true">♠</span>
+                  Studio IA
+                </button>
+              </div>
             )}
             {phase === 'finalizada' && <p className="room-done">Sala encerrada. Gere o relatório abaixo.</p>}
           </div>

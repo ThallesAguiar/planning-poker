@@ -13,7 +13,7 @@ const VOTE_LABELS: Record<AiStatus, string> = {
 };
 
 const DISCUSS_LABELS: Record<AiStatus, string> = {
-  idle: '🤖 Resumir & sugerir',
+  idle: '♠ Resumir e sugerir',
   voting: '',
   voted: '',
   discussing: 'IA analisando...',

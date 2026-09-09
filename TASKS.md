@@ -203,6 +203,8 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Reconexão de sala privada com token válido não exige senha novamente; senha fica apenas na `sessionStorage` enquanto necessária ao fluxo de entrada.
 - [x] Troca de papel aprovada pelo host (US3): `room:roleChangeRequest` lido no painel de participantes (solicitar papel), host aprova/recusa via `room:profileDecision`; `room:state` agora traz `roleRequests` pendentes (backend `getPendingRoleRequests` + memória do gateway), sobrevivendo a reload e funcionando para guest e conta.
 - [x] Loading de reconexao deixou de usar o visual da tela de entrada: novo `restoring-shell`/`restoring-card`/spinner em tema escuro da mesa; `restoringRoom` so renderiza loading enquanto nao entrou na mesa (`joined`), evitando travamento ao levar sessao da home para `/room/:code`.
+- [x] Lateral da mesa reorganizada: regras agora aparecem em linhas de leitura rapida, `Studio IA` tambem ficou no header para PO, e o icone de IA na mesa passou a usar carta/espadas em vez de robo.
+- [x] Tela direta de entrada em mesa (`/room/:code`) ganhou acoes `Voltar` para outras salas/home e `Sair` para deslogar conta antes de entrar.
 
 - [x] Fluxo entrada/mesa separado: mesa so renderiza apos `room:state` confirmado da sala atual, sem flash ao errar senha, usar sala inexistente ou receber token invalido.
 
@@ -422,6 +424,35 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [~] Feature `002-user-auth-rooms`: tasks T001-T018, T022-T030, T035-T042, T047-T052, T065-T069 e T071-T072 marcadas em `specs/002-user-auth-rooms/tasks.md`; testes REST/E2E de US1/US2, UI de US3 e visual/E2E de US4 ainda pendentes.
 - [~] Docker: `docker compose config --quiet` aprovado e API revalidada em `http://localhost:3333/health` apos mover a porta publicada da API de `localhost:3000` para `localhost:3333` e alinhar `VITE_API_URL`; `docker compose up --build -d` completo segue bloqueado por erros TypeScript preexistentes no build do frontend containerizado (`src/features/table/*.tsx`, `src/lib/socket.ts`, `src/stores/app-store.ts`).
 
+## 10. Studio de IA por Mesa (Feature 004)
+
+### Feito
+
+- [x] Schema Prisma: modelos `RoomAiAgent`, `RoomLlmProvider`, `RoomBusinessRule` com FK cascade e índices
+- [x] DTOs `api/src/ai/room-ai-studio.dto.ts` (espelham account studio)
+- [x] Utilitários compartilhados `maskApiKey` / `normalizeBaseUrl` em `api/src/ai/studio-utils.ts`
+- [x] `RoomStudioService` com precedência granular (mesa → conta → default)
+- [x] `RoomStudioController` REST `/rooms/:id/ai-studio` (GET, PUT provider, POST provider/test, PUT agent, PUT rules)
+- [x] Gate de dono: só dono autenticado em conta lê/escreve (401 sem bearer, 403 não-dono/guest)
+- [x] Client frontend `frontend/src/lib/room-studio.ts`
+- [x] Painel `RoomStudioPanel` em `RoomConfiguration.tsx` (apenas PO com conta; PO guest vê aviso)
+- [x] Precedência granular em `resolveRoomAiContext`: persona/provedor/regras resolvem mesa → conta → env
+- [x] Testes de precedência: 5 cases cobrindo mesa sobre conta, herança de regras, guest com studio próprio
+- [x] Testes de autorização do controller (401, 403 não-dono, 403 guest, 200 dono)
+- [x] Guardrails incondicionais no `LlmClient` (nível 'moderate' default; 'none' removido)
+- [x] Migration `20260908130000_room_ai_studio` aplicada via `prisma migrate deploy`; `migrate status` up-to-date e tabelas `RoomAiAgent`/`RoomLlmProvider`/`RoomBusinessRule` confirmadas no Postgres com FK `ON DELETE CASCADE`
+- [x] Suite completa verde: `cd api && npx vitest run` (22 arquivos, 153 testes) + `npm run build`; guardrails/llm.client sem regressão
+- [x] Docker validado: containers `planning-pocker`/frontend/postgres/redis saudáveis, `GET /rooms/:id/ai-studio` responde 401 sem bearer na instância em execução (gate ativo); quickstart C1 confirmado (tabelas)
+- [x] Revisão final de segurança: token mascarado (`maskApiKey`) e nunca em claro nas respostas; `apiKey` fora de `room:state` (fica só como `LlmRunConfig` interno); cascade de deleção confirmado; um único mecanismo de auth (bearer + `SessionService.verifyAccount`)
+
+### Impacto por camada (Feature 004)
+
+- **Dados**: 3 tabelas novas (`RoomAiAgent` 1×1, `RoomLlmProvider` 0..1, `RoomBusinessRule` N) chaveadas por `roomId`, cascade p/ `Room`; migration versionada aplicada.
+- **API**: `GET/PUT /rooms/:id/ai-studio{,/provider,/provider/test,/agent,/rules}` — dono autenticado em conta (401 sem bearer, 403 não-dono/guest); `resolveRoomAiContext` com precedência granular mesa → conta → env.
+- **Frontend**: painel "Studio de IA da sala" em `RoomConfiguration.tsx` (PO com conta); PO guest vê aviso; não-PO não vê.
+
+**Rastreabilidade**: `specs/004-ai-studio-room/` (plan.md, tasks.md T001–T021, quickstart.md C1–C6). Verificado em 09/09/2026.
+
 ### Pendente
 
 - [ ] Testes de integracao do ciclo completo da rodada.
@@ -435,6 +466,9 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Testes unitarios de deadline, substituicao e cancelamento do timer em `api/src/realtime/timer.service.spec.ts`.
 - [x] Relatorio como documentacao: justificativa opcional no voto (masked em votacao/lobby), votos por rodada com nomes, sintese + tarefas sugeridas em modo hibrido com fallback heuristico, anotacoes da mesa e geracao com secoes configuráveis; 61 testes API, 21 E2E, frontend build/lint aprovados, container API rebuildado (`planning-pocker`) com `dist` novo.
 - [x] Portugues do sistema: acentos e grafia corrigidos nos textos visiveis do frontend (mesa, configuracao, dashboard, studio, perfil, home e relatorio) e nas mensagens de erro/sessao do backend, exportacoes CSV/PDF e rotulos/aria-labels; testes ajustados (`Fase: Discussão/Revelação/Votação`, `Título/Descrição da história`, `Adicionar história`, `Código da sala`, `Sala não encontrada`, cabecalhos CSV `SEÇÃO`/`História`); frontend `tsc -b`+`oxlint` aprovados e API `vitest run` aprovado com 20 arquivos e 127 testes.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos reorganizar lateral da mesa e adicionar `Studio IA` no header.
+- [x] Frontend: `npm run build` e `npm run lint` executados apos adicionar `Voltar`/`Sair` na entrada direta da mesa.
+- [x] Docker: `docker compose up --build -d frontend` executado para publicar a tela de entrada atualizada em `http://localhost:5173`.
 
 ## Ordem recomendada
 

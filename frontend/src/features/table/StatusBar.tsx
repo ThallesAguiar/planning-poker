@@ -17,7 +17,15 @@ function formatSeconds(seconds: number) {
   return `${minutes}:${String(rest).padStart(2, '0')}`;
 }
 
-export function StatusBar({ onLogout, onOpenSettings }: { onLogout: () => void; onOpenSettings: () => void }) {
+export function StatusBar({
+  onLogout,
+  onOpenSettings,
+  onOpenStudio,
+}: {
+  onLogout: () => void;
+  onOpenSettings: () => void;
+  onOpenStudio: () => void;
+}) {
   const navigate = useNavigate();
   const state = useAppStore((s) => s.state);
   const connectionStatus = useAppStore((s) => s.connectionStatus);
@@ -68,16 +76,29 @@ export function StatusBar({ onLogout, onOpenSettings }: { onLogout: () => void; 
         <span className={`connection-dot ${connectionStatus}`} title={`Socket: ${connectionStatus}`} />
         {connectionStatus === 'reconnecting' && <small className="reconnecting-label">reconectando</small>}
         {isPO && (
-          <button
-            type="button"
-            onClick={() => {
-              onOpenSettings();
-              setMobileMenuOpen(false);
-            }}
-            title="Configurações da sala"
-          >
-            Config
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                onOpenSettings();
+                setMobileMenuOpen(false);
+              }}
+              title="Configurações da sala"
+            >
+              Config
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onOpenStudio();
+                setMobileMenuOpen(false);
+              }}
+              title="Studio IA da sala"
+            >
+              <span className="poker-ai-icon" aria-hidden="true">♠</span>
+              Studio IA
+            </button>
+          </>
         )}
         {account && (
           <button

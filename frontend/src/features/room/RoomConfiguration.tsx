@@ -107,101 +107,133 @@ export function RoomConfiguration({ onClose }: { onClose: () => void }) {
   return (
     <div className="config-overlay" onClick={onClose}>
       <section className="config-panel ui-scrollbar" onClick={(event) => event.stopPropagation()}>
-<div className="settings-title">
+        <div className="settings-title">
           <h3>Configuração da sala</h3>
           <button type="button" className="close-config" onClick={onClose} aria-label="Fechar">
             ×
           </button>
         </div>
         {locked && <p className="config-notice">Sala em andamento: privacidade e senha ainda podem ser alteradas. As demais configurações só valem antes de iniciar a rodada.</p>}
-        <label>
-          Acesso da sala
-          <select value={visibility} onChange={(e) => { setVisibility(e.target.value as RoomVisibility); setSecurityError(''); }}>
-            <option value="PUBLIC">Pública</option>
-            <option value="PRIVATE">Privada</option>
-          </select>
-        </label>
-        {visibility === 'PRIVATE' && (
+
+        {/* --- Acesso & Segurança --- */}
+        <div className="config-section">
+          <h4 className="config-section-title">Acesso e segurança</h4>
           <label>
-            Senha da sala
-            <span className="config-password-field">
-              <span className="config-password-icon" aria-hidden="true" />
-              <input
-                type="password"
-                minLength={4}
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  setSecurityError('');
-                }}
-placeholder={state?.visibility === 'PRIVATE' ? 'Deixe vazio para manter a senha atual' : 'Mínimo 4 caracteres'}
-              />
-            </span>
-            <small>{state?.visibility === 'PRIVATE' ? 'Preencha apenas se quiser trocar a senha.' : 'Novas entradas vão exigir esta senha.'}</small>
+            Acesso da sala
+            <select value={visibility} onChange={(e) => { setVisibility(e.target.value as RoomVisibility); setSecurityError(''); }}>
+              <option value="PUBLIC">Pública</option>
+              <option value="PRIVATE">Privada</option>
+            </select>
           </label>
+          {visibility === 'PRIVATE' && (
+            <label>
+              Senha da sala
+              <span className="config-password-field">
+                <span className="config-password-icon" aria-hidden="true" />
+                <input
+                  type="password"
+                  minLength={4}
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setSecurityError('');
+                  }}
+                  placeholder={state?.visibility === 'PRIVATE' ? 'Deixe vazio para manter a senha atual' : 'Mínimo 4 caracteres'}
+                />
+              </span>
+              <small>{state?.visibility === 'PRIVATE' ? 'Preencha apenas se quiser trocar a senha.' : 'Novas entradas vão exigir esta senha.'}</small>
+            </label>
+          )}
+          {securityError && <p className="config-notice" role="alert">{securityError}</p>}
+          <ToggleField label="Exigir aprovação para entrar" checked={requireJoinApproval} onChange={setRequireJoinApproval} />
+        </div>
+
+        {/* --- Temporização --- */}
+        <div className="config-section">
+          <h4 className="config-section-title">Temporização</h4>
+          <div className="config-field-row">
+            <NumberField label="Reflexão (seg)" value={reflexao} onChange={setReflexao} disabled={locked} />
+            <NumberField label="Discussão (seg)" value={discussao} onChange={setDiscussao} disabled={locked} />
+          </div>
+          <NumberField label="Limite de participantes" value={maxPessoas} onChange={setMaxPessoas} disabled={locked} />
+        </div>
+
+        {/* --- Regras de jogo --- */}
+        <div className="config-section">
+          <h4 className="config-section-title">Regras de jogo</h4>
+          <label>
+            Regra de consenso
+            <select value={criterio} onChange={(e) => setCriterio(e.target.value as never)} disabled={locked}>
+              <option value="decisao_po">Decisão do PO</option>
+              <option value="unanime">Consenso unânime</option>
+              <option value="media">Média</option>
+              <option value="mediana">Mediana</option>
+            </select>
+          </label>
+          <ToggleField label="Voto anônimo" checked={anonimo} onChange={setAnonimo} disabled={locked} />
+          <ToggleField label="Revelação automática" checked={automatic} onChange={setAutomatic} disabled={locked} />
+        </div>
+
+        {/* --- Inteligência Artificial --- */}
+        <div className="config-section">
+          <h4 className="config-section-title">Inteligência Artificial</h4>
+          <ToggleField label="Participante IA" checked={ia} onChange={setIa} disabled={locked} />
+          <ToggleField label="IA discute" checked={discute} onChange={setDiscute} disabled={locked || !ia} />
+        </div>
+
+        {/* --- Moderação --- */}
+        {roleRequests.length > 0 && (
+          <div className="config-section">
+            <h4 className="config-section-title">Solicitações de papel</h4>
+            {roleRequests.map((request) => (
+              <div className="config-participant-row" key={request.id}>
+                <span className="person-avatar">?</span>
+                <span>
+                  <b>{request.requesterName ?? 'Participante'}</b>
+                  <small>{request.currentRole} para {request.requestedRole}</small>
+                </span>
+                <span className="join-request-actions">
+                  <button type="button" className="moderate-link" onClick={() => decideRoleChange(request.id, 'approved')}>
+                    Aprovar
+                  </button>
+                  <button type="button" className="moderate-link reject" onClick={() => decideRoleChange(request.id, 'rejected')}>
+                    Recusar
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
         )}
-        {securityError && <p className="config-notice" role="alert">{securityError}</p>}
-<NumberField label="Tempo de reflexão (segundos)" value={reflexao} onChange={setReflexao} disabled={locked} />
-        <NumberField label="Tempo de discussão (segundos)" value={discussao} onChange={setDiscussao} disabled={locked} />
-        <NumberField label="Limite de participantes" value={maxPessoas} onChange={setMaxPessoas} disabled={locked} />
-        <label>
-          Regra de consenso
-          <select value={criterio} onChange={(e) => setCriterio(e.target.value as never)} disabled={locked}>
-            <option value="decisao_po">Decisão do PO</option>
-            <option value="unanime">Consenso unânime</option>
-            <option value="media">Média</option>
-            <option value="mediana">Mediana</option>
-          </select>
-        </label>
-        <ToggleField label="Participante IA" checked={ia} onChange={setIa} disabled={locked} />
-        <ToggleField label="IA discute" checked={discute} onChange={setDiscute} disabled={locked || !ia} />
-        <ToggleField label="Voto anônimo" checked={anonimo} onChange={setAnonimo} disabled={locked} />
-        <ToggleField label="Revelação automática" checked={automatic} onChange={setAutomatic} disabled={locked} />
-        <ToggleField label="Exigir aprovação para entrar" checked={requireJoinApproval} onChange={setRequireJoinApproval} />
-<div className="config-participants">
-          <h4>Solicitações de papel</h4>
-          {roleRequests.length === 0 && <p className="config-empty">Nenhuma solicitação pendente.</p>}
-          {roleRequests.map((request) => (
-            <div className="config-participant-row" key={request.id}>
-              <span className="person-avatar">?</span>
-              <span>
-                <b>{request.requesterName ?? 'Participante'}</b>
-                <small>{request.currentRole} para {request.requestedRole}</small>
-              </span>
-              <span className="join-request-actions">
-                <button type="button" className="moderate-link" onClick={() => decideRoleChange(request.id, 'approved')}>
-                  Aprovar
-                </button>
-                <button type="button" className="moderate-link reject" onClick={() => decideRoleChange(request.id, 'rejected')}>
-                  Recusar
-                </button>
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="config-participants">
-          <h4>Pedidos de entrada</h4>
-          {joinRequests.length === 0 && <p className="config-empty">Nenhum pedido pendente.</p>}
-          {joinRequests.map((request) => (
-            <div className="config-participant-row" key={request.id}>
-              <span className="person-avatar">{request.avatar || '?'}</span>
-              <span>
-                <b>{request.name}</b>
-                <small>{request.requestedRole} aguardando aprovação</small>
-              </span>
-              <span className="join-request-actions">
-                <button type="button" className="moderate-link" onClick={() => decideJoinRequest(request.id, 'approved')}>
-                  Aprovar
-                </button>
-                <button type="button" className="moderate-link reject" onClick={() => decideJoinRequest(request.id, 'rejected')}>
-                  Recusar
-                </button>
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="config-participants">
-          <h4>Participantes</h4>
+
+        {joinRequests.length > 0 && (
+          <div className="config-section">
+            <h4 className="config-section-title">Pedidos de entrada</h4>
+            {joinRequests.map((request) => (
+              <div className="config-participant-row" key={request.id}>
+                <span className="person-avatar">{request.avatar || '?'}</span>
+                <span>
+                  <b>{request.name}</b>
+                  <small>{request.requestedRole} aguardando aprovação</small>
+                </span>
+                <span className="join-request-actions">
+                  <button type="button" className="moderate-link" onClick={() => decideJoinRequest(request.id, 'approved')}>
+                    Aprovar
+                  </button>
+                  <button type="button" className="moderate-link reject" onClick={() => decideJoinRequest(request.id, 'rejected')}>
+                    Recusar
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* --- Participantes --- */}
+        <div className="config-section">
+          <h4 className="config-section-title">
+            Participantes
+            <small>{(state?.participants ?? []).length}</small>
+          </h4>
           {(state?.participants ?? []).map((person) => {
             const canRemove = person.id !== state?.ownerId;
             return (
@@ -231,7 +263,8 @@ placeholder={state?.visibility === 'PRIVATE' ? 'Deixe vazio para manter a senha 
             );
           })}
         </div>
-<button className="primary" type="button" onClick={save}>
+
+        <button className="primary config-save-btn" type="button" onClick={save}>
           Salvar configuração
         </button>
       </section>

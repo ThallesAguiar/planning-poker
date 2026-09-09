@@ -6,7 +6,7 @@ import { DashboardShell } from "./DashboardPages";
 
 type Feedback = { kind: "ok" | "error"; text: string } | null;
 
-const AVATARS = ["♠", "♥", "♦", "♣", "🃏", "🎩", "🤖", "🐙", "🚀"];
+const AVATARS = ["♠", "♥", "♦", "♣", "🃏", "A♠", "K♣", "Q♥", "J♦"];
 
 export function StudioPage() {
   const { account, accountToken } = useAppStore();
@@ -22,7 +22,7 @@ export function StudioPage() {
   const [testMsg, setTestMsg] = useState<Feedback>(null);
 
   const [agentName, setAgentName] = useState("");
-  const [agentAvatar, setAgentAvatar] = useState("🤖");
+  const [agentAvatar, setAgentAvatar] = useState("♠");
   const [agentPrompt, setAgentPrompt] = useState("");
   const [agentMsg, setAgentMsg] = useState<Feedback>(null);
 
@@ -113,7 +113,7 @@ export function StudioPage() {
     try {
       await saveStudioAgent(accountToken, {
         name: agentName.trim(),
-        avatar: agentAvatar.trim() || "🤖",
+        avatar: agentAvatar.trim() || "♠",
         systemPrompt: agentPrompt,
       });
       setAgentMsg({ kind: "ok", text: "Agente salvo." });

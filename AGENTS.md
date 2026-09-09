@@ -1,5 +1,7 @@
 # Instrucoes do projeto
 
+- Quando estiver usando a skill de speckit, ignore a instrução de atualizar `TASKS.md`, pois a propria skill ja cria um .md de tasks.
+
 ## Atualizacao obrigatoria de tarefas
 
 Depois de qualquer implementacao, correcao ou alteracao relevante, atualize `TASKS.md` na mesma tarefa.
@@ -25,9 +27,3 @@ Regras:
 ## Verificacao
 
 Antes de concluir, leia `TASKS.md`, confirme que os itens refletem o estado real do repositorio e inclua arquivos, comandos ou testes relevantes quando ajudarem a localizar o trabalho.
-
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-at `specs/002-user-auth-rooms/plan.md`.
-<!-- SPECKIT END -->

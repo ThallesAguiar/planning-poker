@@ -1,0 +1,63 @@
+### Exemplos (VSCode REST Client)
+
+Requisições de exemplo. Substitua `{{TOKEN}}` por um bearer de conta válida e `{{ROOM_ID}}` pelo id/código da mesa.
+
+```http
+@host = http://localhost:3000
+@token = <bearer-account-token>
+@roomId = <room-id-ou-invite-code>
+
+### Snapshot do studio da mesa
+GET {{host}}/rooms/{{roomId}}/ai-studio
+Authorization: Bearer {{token}}
+
+### Salvar provedor da mesa
+PUT {{host}}/rooms/{{roomId}}/ai-studio/provider
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "OpenRouter",
+  "baseUrl": "openrouter.ai/api/v1/",
+  "apiKey": "sk-...",
+  "model": "openai/gpt-4o-mini"
+}
+
+### Testar provedor da mesa
+POST {{host}}/rooms/{{roomId}}/ai-studio/provider/test
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "apiKey": "sk-...",
+  "model": "openai/gpt-4o-mini"
+}
+
+### Salvar persona da mesa
+PUT {{host}}/rooms/{{roomId}}/ai-studio/agent
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Robô da Mesa",
+  "avatar": "🃏",
+  "systemPrompt": "Você é um contribuidor sênior desta mesa."
+}
+
+### Salvar regras da mesa
+PUT {{host}}/rooms/{{roomId}}/ai-studio/rules
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contents": ["Moeda: BRL", "Não estimar acima de 13 sem dividir"]
+}
+
+### Tentativa por não-dono → 403 FORBIDDEN
+PUT {{host}}/rooms/{{roomId}}/ai-studio/agent
+Authorization: Bearer {{nonOwnerToken}}
+Content-Type: application/json
+
+{ "name": "Hack", "systemPrompt": "x" }
+```

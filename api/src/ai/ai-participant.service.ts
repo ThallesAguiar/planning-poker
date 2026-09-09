@@ -17,28 +17,47 @@ export class AiParticipantService {
 
   constructor(private readonly prisma: PrismaService, private readonly llm: LlmClient) {}
 
-  /** Resolve persona + credentials do dono (PO) da sala no Studio. Sem conta real, usa env + defaults. */
+  /** Resolve persona + credentials da mesa (Studio por-sala) com precedência granular por recurso:
+   * mesa -> conta do dono -> padrões de ambiente. A mesa com studio próprio funciona mesmo sem conta real. */
   private async resolveRoomAiContext(roomId: string): Promise<RoomAiContext> {
     const room = await this.prisma.room.findUnique({ where: { id: roomId }, select: { ownerId: true } });
-    const owner = room ? await this.prisma.roomParticipant.findUnique({ where: { id: room.ownerId }, include: { user: true } }) : null;
-    if (!owner?.user || owner.user.isGuest) {
-      return { agent: DEFAULT_AGENT, run: {} };
-    }
-    const [provider, agent, rules] = await Promise.all([
-      this.prisma.llmProvider.findFirst({ where: { userId: owner.user.id, isActive: true } }),
-      this.prisma.aiAgent.findUnique({ where: { userId: owner.user.id } }),
-      this.prisma.businessRule.findMany({ where: { userId: owner.user.id }, orderBy: { order: 'asc' } }),
+
+    const [roomAgent, roomProvider, roomRules] = await Promise.all([
+      (this.prisma as any).roomAiAgent?.findUnique?.({ where: { roomId } }) ?? Promise.resolve(undefined),
+      (this.prisma as any).roomLlmProvider?.findFirst?.({ where: { roomId, isActive: true } }) ?? Promise.resolve(undefined),
+      (this.prisma as any).roomBusinessRule?.findMany?.({ where: { roomId }, orderBy: { order: 'asc' } }) ?? Promise.resolve([] as { content: string }[]),
     ]);
+
+    const owner = room ? await this.prisma.roomParticipant.findUnique({ where: { id: room.ownerId }, include: { user: true } }) : null;
+    const ownerUser = owner?.user;
+    const ownerReal = Boolean(ownerUser && !ownerUser.isGuest);
+
+    let accountProvider: { baseUrl: string; apiKey: string; model: string } | null = null;
+    let accountAgent: { name?: string; avatar?: string; systemPrompt?: string } | null = null;
+    let accountRules: { content: string }[] = [];
+    if (ownerReal && ownerUser) {
+      [accountProvider, accountAgent, accountRules] = await Promise.all([
+        this.prisma.llmProvider.findFirst({ where: { userId: ownerUser.id, isActive: true } }),
+        this.prisma.aiAgent.findUnique({ where: { userId: ownerUser.id } }),
+        this.prisma.businessRule.findMany({ where: { userId: ownerUser.id }, orderBy: { order: 'asc' } }),
+      ]);
+    }
+
+    const agent = {
+      name: roomAgent?.name || accountAgent?.name || DEFAULT_AGENT.name,
+      avatar: roomAgent?.avatar || accountAgent?.avatar || DEFAULT_AGENT.avatar,
+      systemPrompt: roomAgent?.systemPrompt || accountAgent?.systemPrompt || DEFAULT_AGENT.systemPrompt,
+    };
+    const provider = roomProvider ?? accountProvider;
+    const roomRuleItems: string[] = roomRules && roomRules.length > 0 ? roomRules.map((rule: { content: string }) => rule.content) : [];
+    const rules = roomRuleItems.length > 0 ? roomRuleItems : accountRules.map((rule) => rule.content);
+
     return {
-      agent: {
-        name: agent?.name || DEFAULT_AGENT.name,
-        avatar: agent?.avatar || DEFAULT_AGENT.avatar,
-        systemPrompt: agent?.systemPrompt || DEFAULT_AGENT.systemPrompt,
-      },
+      agent,
       run: {
         options: provider ? { baseUrl: provider.baseUrl, apiKey: provider.apiKey, model: provider.model } : undefined,
-        systemPrompt: agent?.systemPrompt || undefined,
-        businessRules: rules.map((rule) => rule.content),
+        systemPrompt: agent.systemPrompt !== DEFAULT_AGENT.systemPrompt ? agent.systemPrompt : undefined,
+        businessRules: rules,
       },
     };
   }

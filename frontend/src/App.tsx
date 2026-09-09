@@ -740,6 +740,16 @@ export function App({ mode }: { mode: "home" | "room" }) {
 
           {mode === "room" || homeCard === "room" ? (
             <form className="join-panel" onSubmit={submitHome}>
+          {mode === "room" && (
+            <div className="room-entry-actions">
+              <Link to={account ? "/rooms" : "/"}>Voltar</Link>
+              {account && (
+                <button type="button" onClick={logout}>
+                  Sair
+                </button>
+              )}
+            </div>
+          )}
           <div className="brand-mark">♠</div>
 
           {mode === "home" && (

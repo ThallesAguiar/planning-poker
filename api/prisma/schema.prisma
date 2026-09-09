@@ -93,6 +93,40 @@ model Room {
   stories Story[]
   messages ChatMessage[]
   reports SprintReport[]
+  roomAiAgent RoomAiAgent?
+  roomLlmProviders RoomLlmProvider[]
+  roomBusinessRules RoomBusinessRule[]
+}
+model RoomAiAgent {
+  id           String   @id @default(cuid())
+  roomId       String   @unique
+  name         String   @default("Agente IA")
+  avatar       String   @default("🤖")
+  systemPrompt String   @default("You are an expert planning-poker contributor analyzing user stories, voting realistically against the deck, and explaining estimates.")
+  updatedAt    DateTime @updatedAt
+  room         Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+model RoomLlmProvider {
+  id        String   @id @default(cuid())
+  roomId    String
+  name      String
+  baseUrl   String
+  apiKey    String
+  model     String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  @@index([roomId])
+}
+model RoomBusinessRule {
+  id        String   @id @default(cuid())
+  roomId    String
+  content   String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  @@index([roomId, order])
 }
 model RoomConfig {
   id String @id @default(cuid())

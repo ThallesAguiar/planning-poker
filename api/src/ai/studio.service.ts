@@ -1,19 +1,11 @@
 import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { LlmClient } from './llm.client.js';
 import { PrismaService } from '../prisma.service.js';
+import { maskApiKey, normalizeBaseUrl } from './studio-utils.js';
 
 export type ProviderSummary = { name: string; baseUrl: string; model: string; isActive: boolean; hasApiKey: boolean; apiKeyMasked: string };
 export type AgentSummary = { name: string; avatar: string; systemPrompt: string };
 export type StudioSnapshot = { provider: ProviderSummary | null; agent: AgentSummary | null; rules: string[] };
-
-const maskApiKey = (key: string) => (key.length <= 6 ? '••••' : `${key.slice(0, 3)}…${key.slice(-4)}`);
-
-/** Garante protocolo + remove barra final: "openrouter.ai/api/v1/" -> "https://openrouter.ai/api/v1". */
-const normalizeBaseUrl = (url: string) => {
-  const trimmed = url.trim();
-  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  return withProtocol.replace(/\/$/, '');
-};
 
 @Injectable()
 export class StudioService {

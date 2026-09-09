@@ -20,6 +20,8 @@ import { LlmClient } from './ai/llm.client.js';
 import { AiParticipantService } from './ai/ai-participant.service.js';
 import { StudioService } from './ai/studio.service.js';
 import { StudioController } from './ai/studio.controller.js';
+import { RoomStudioService } from './ai/room-studio.service.js';
+import { RoomStudioController } from './ai/room-studio.controller.js';
 import { RoomStateService } from './realtime/room-state.service.js';
 import { RoundService } from './realtime/round.service.js';
 import { PresenceService } from './realtime/presence.service.js';
@@ -37,7 +39,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       serviceId: 'api',
     }),
   ],
-  controllers: [AppController, AuthController, RoomController, ReportController, StudioController],
-  providers: [AppService, PrismaService, AuthService, RoomService, RoomGateway, AuthorizationService, SessionService, TimerService, ReportService, AchievementsService, InsightsService, PdfExportService, LlmClient, AiParticipantService, RoomStateService, RoundService, PresenceService, CorrelationLogger, StudioService],
+  controllers: [AppController, AuthController, RoomController, ReportController, StudioController, RoomStudioController],
+  providers: [AppService, PrismaService, AuthService, RoomService, RoomGateway, AuthorizationService, SessionService, TimerService, ReportService, AchievementsService, InsightsService, PdfExportService, LlmClient, AiParticipantService, RoomStateService, RoundService, PresenceService, CorrelationLogger, StudioService, RoomStudioService],
 })
 export class AppModule {}
