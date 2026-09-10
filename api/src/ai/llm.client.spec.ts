@@ -13,6 +13,16 @@ describe('LlmClient', () => {
     vi.unstubAllEnvs(); vi.unstubAllGlobals();
   });
 
+  it('reserves enough completion budget for reasoning providers during votes', async () => {
+    vi.stubEnv('LLM_API_KEY', 'test-key');
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '{"vote": 1, "justification": "ok"}' } }] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    await new LlmClient().vote({ story: 'x', role: 'Dev', deck: [1, 3, 5] });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.max_tokens).toBeGreaterThanOrEqual(1000);
+    vi.unstubAllEnvs(); vi.unstubAllGlobals();
+  });
+
   it('rejects provider output outside allowed deck', async () => {
     vi.stubEnv('LLM_API_KEY', 'test-key');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '{"vote": 99, "justification": "bad"}' } }] }) }));

@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Headers, Param, Post, Put, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Headers, Param, Post, Put, UnauthorizedException } from '@nestjs/common';
 import { SessionService } from '../auth/session.service.js';
 import { PrismaService } from '../prisma.service.js';
 import { RoomStudioService } from './room-studio.service.js';
@@ -38,8 +38,9 @@ export class RoomStudioController {
 
   @Get()
   async get(@Param('id') id: string, @Headers('authorization') authorization?: string) {
-    const roomId = await this.assertRoomOwner(id, this.accountUserId(authorization));
-    return this.studio.getForRoom(roomId);
+    const userId = this.accountUserId(authorization);
+    const roomId = await this.assertRoomOwner(id, userId);
+    return this.studio.getForRoom(roomId, userId);
   }
 
   @Put('provider')
@@ -50,8 +51,9 @@ export class RoomStudioController {
 
   @Post('provider/test')
   async testProvider(@Param('id') id: string, @Body() body: TestRoomProviderDto, @Headers('authorization') authorization?: string) {
-    const roomId = await this.assertRoomOwner(id, this.accountUserId(authorization));
-    return this.studio.testProvider(roomId, body);
+    const userId = this.accountUserId(authorization);
+    const roomId = await this.assertRoomOwner(id, userId);
+    return this.studio.testProvider(roomId, userId, body);
   }
 
   @Put('agent')
@@ -64,5 +66,26 @@ export class RoomStudioController {
   async saveRules(@Param('id') id: string, @Body() body: SaveRoomRulesDto, @Headers('authorization') authorization?: string) {
     const roomId = await this.assertRoomOwner(id, this.accountUserId(authorization));
     return this.studio.saveRules(roomId, body.contents);
+  }
+
+  @Delete('provider')
+  async inheritProvider(@Param('id') id: string, @Headers('authorization') authorization?: string) {
+    const roomId = await this.assertRoomOwner(id, this.accountUserId(authorization));
+    await this.studio.inheritProvider(roomId);
+    return { ok: true };
+  }
+
+  @Delete('agent')
+  async inheritAgent(@Param('id') id: string, @Headers('authorization') authorization?: string) {
+    const roomId = await this.assertRoomOwner(id, this.accountUserId(authorization));
+    await this.studio.inheritAgent(roomId);
+    return { ok: true };
+  }
+
+  @Delete('rules')
+  async inheritRules(@Param('id') id: string, @Headers('authorization') authorization?: string) {
+    const roomId = await this.assertRoomOwner(id, this.accountUserId(authorization));
+    await this.studio.inheritRules(roomId);
+    return { ok: true };
   }
 }

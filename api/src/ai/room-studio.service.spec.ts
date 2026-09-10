@@ -7,6 +7,9 @@ function prismaMock() {
     roomLlmProvider: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     roomAiAgent: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     roomBusinessRule: { findMany: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn() },
+    llmProvider: { findFirst: vi.fn() },
+    aiAgent: { findUnique: vi.fn() },
+    businessRule: { findMany: vi.fn() },
     $transaction: vi.fn(async (fn: (tx: any) => Promise<unknown>) => fn({ roomBusinessRule: { deleteMany: vi.fn(), createMany: vi.fn() } })),
   };
 }
@@ -30,7 +33,7 @@ describe('RoomStudioService', () => {
     prisma.roomAiAgent.findUnique.mockResolvedValue(null);
     prisma.roomBusinessRule.findMany.mockResolvedValue([]);
     const result = await new RoomStudioService(prisma as any, {} as any).getForRoom('r');
-    expect(result).toEqual({ provider: null, agent: null, rules: [] });
+    expect(result).toMatchObject({ provider: null, agent: null, rules: [], sources: { provider: 'system', agent: 'system', rules: 'system' } });
   });
 
   it('saveProvider keeps the current key when a new one is omitted', async () => {

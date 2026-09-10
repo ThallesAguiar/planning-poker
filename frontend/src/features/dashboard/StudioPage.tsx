@@ -137,6 +137,7 @@ export function StudioPage() {
       <div className="dashboard-title">
         <div>
           <h1>Studio</h1>
+          <p className="studio-note">Este Studio da conta é o padrão das suas mesas. No Studio de uma mesa, você pode usar este agente/provedor ou criar uma configuração própria só para aquela mesa.</p>
           <p>Configure a identidade, o contexto e as credenciais das IA que participam das mesas que você dirige.</p>
         </div>
       </div>
@@ -186,6 +187,7 @@ export function StudioPage() {
 
         <section className="studio-panel">
           <h2>Agente (persona)</h2>
+          <p className="studio-hint">Este agente fica salvo na sua conta. Mesas em "usar agente da minha conta" usam este agente automaticamente.</p>
           <p>Nome e avatar do bot que aparece na mesa quando você permite participantes IA.</p>
           <label>
             Nome

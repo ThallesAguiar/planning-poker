@@ -17,6 +17,16 @@ export type RoomStudioSnapshot = {
   provider: StudioProvider | null;
   agent: StudioAgent | null;
   rules: string[];
+  account: {
+    provider: StudioProvider | null;
+    agent: StudioAgent | null;
+    rules: string[];
+  };
+  sources: {
+    provider: "room" | "account" | "system";
+    agent: "room" | "account" | "system";
+    rules: "room" | "account" | "system";
+  };
 };
 
 export type SaveProviderInput = {
@@ -79,4 +89,28 @@ export async function saveRoomStudioRules(token: string, roomId: string, content
     body: JSON.stringify({ contents }),
   });
   return parseJson<string[]>(response);
+}
+
+export async function inheritRoomStudioProvider(token: string, roomId: string) {
+  const response = await fetch(`${API}/rooms/${encodeURIComponent(roomId)}/ai-studio/provider`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  return parseJson<{ ok: boolean }>(response);
+}
+
+export async function inheritRoomStudioAgent(token: string, roomId: string) {
+  const response = await fetch(`${API}/rooms/${encodeURIComponent(roomId)}/ai-studio/agent`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  return parseJson<{ ok: boolean }>(response);
+}
+
+export async function inheritRoomStudioRules(token: string, roomId: string) {
+  const response = await fetch(`${API}/rooms/${encodeURIComponent(roomId)}/ai-studio/rules`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  return parseJson<{ ok: boolean }>(response);
 }

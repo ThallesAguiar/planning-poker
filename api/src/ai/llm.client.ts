@@ -29,6 +29,7 @@ const SYSTEM_VOTE = 'Return only JSON: {"vote": <deck value>, "justification": "
 const SYSTEM_NEAR_SUMMARY = 'Return only JSON: {"overallSummary": "one short paragraph", "perStory": [{"title": "story title", "summary": "what this story concluded", "suggestedTasks": ["next step", "another next step"]}]}.';
 const SYSTEM_DISCUSS_PULL = 'You facilitate a planning-poker discussion. Return only JSON: {"message": "one short question (max ~200 tokens) addressed to the dissenting voter(s), naming who voted what and asking them to explain their higher/lower estimate."}';
 const SYSTEM_DISCUSS_SUMMARIZE = 'You facilitate a planning-poker discussion. Return only JSON: {"message": "a concise summary of the discussion (max ~250 tokens)", "suggestedNextStep": "one of: revotar or finalizar com <value>"}';
+const VOTE_MAX_TOKENS = 1_000;
 
 @Injectable()
 export class LlmClient {
@@ -77,7 +78,7 @@ export class LlmClient {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const response = await fetch(`${baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model, temperature: 0.2, max_tokens: 300, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: this.buildSystem(SYSTEM_VOTE, run) }, { role: 'user', content: wrapUserData(prompt) }] }), signal: controller.signal });
+      const response = await fetch(`${baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model, temperature: 0.2, max_tokens: VOTE_MAX_TOKENS, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: this.buildSystem(SYSTEM_VOTE, run) }, { role: 'user', content: wrapUserData(prompt) }] }), signal: controller.signal });
       if (!response.ok) throw new ServiceUnavailableException('AI_PROVIDER_ERROR');
       const body = await response.json() as any;
       const text = body?.choices?.[0]?.message?.content;

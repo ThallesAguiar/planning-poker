@@ -245,6 +245,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 ### Feito
 
 - [x] Adapter LLM provider-neutral isolado com timeout, prompt limitado e resposta estruturada; suporta OpenRouter, OpenAI e endpoints OpenAI-compatible.
+- [x] `LlmClient.vote` reserva 1000 `max_tokens` para modelos com `reasoning_content`, evitando falha no `provider/test` por JSON final truncado em provedores OpenAI-compatible.
 - [x] Participante IA cria identidade, vota, registra justificativa, expõe status realtime e possui controles frontend.
 
 ### Pendente
@@ -469,6 +470,10 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos reorganizar lateral da mesa e adicionar `Studio IA` no header.
 - [x] Frontend: `npm run build` e `npm run lint` executados apos adicionar `Voltar`/`Sair` na entrada direta da mesa.
 - [x] Docker: `docker compose up --build -d frontend` executado para publicar a tela de entrada atualizada em `http://localhost:5173`.
+- [x] IA/Studio: `npm test -- ai/llm.client.spec.ts ai/studio.service.spec.ts ai/room-studio.service.spec.ts` (28 testes), `npm run build`, `docker compose up --build -d api`, healthcheck e smoke real `provider/test` aprovados para Studio do usuario e da mesa com provedor OpenAI-compatible configurado em runtime.
+- [x] IA/Studio da mesa: painel agora permite herdar provedor, agente e regras do Studio da conta ou configurar valores proprios da mesa; heranca remove overrides via `DELETE /rooms/:id/ai-studio/{provider,agent,rules}` e permanece vinculada a futuras mudancas da conta.
+- [x] Qualidade: `npm test -- ai/room-studio.service.spec.ts ai/room-studio.controller.spec.ts ai/ai-participant.service.spec.ts` (34 testes), API `npm run build`, frontend `npm run build`/`npm run lint`, `docker compose up --build -d api frontend`, healthcheck e `curl -I http://localhost:5173` aprovados.
+- [x] Frontend Studio: textos explicativos adicionados no Studio da conta e no Studio da mesa sobre herdar agente/provedor/regras da conta, criar configuracao propria da mesa e efeito de voltar para heranca; frontend `npm run build`, `npm run lint` e `docker compose up --build -d frontend` aprovados.
 
 ## Ordem recomendada
 

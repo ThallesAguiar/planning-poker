@@ -71,7 +71,7 @@ describe('RoomStudioController', () => {
     const { controller, studio } = makeController();
     const result = await controller.get('room-1', 'Bearer owner-token');
     expect(result).toEqual({ provider: null, agent: null, rules: [] });
-    expect(studio.getForRoom).toHaveBeenCalledWith('room-1');
+    expect(studio.getForRoom).toHaveBeenCalledWith('room-1', 'user-owner');
   });
 
   it('resolve por inviteCode e normaliza para o id canônico', async () => {
@@ -80,7 +80,7 @@ describe('RoomStudioController', () => {
     prisma.roomParticipant.findUnique.mockResolvedValue({ id: 'owner-participant', roomId: 'room-9', userId: 'user-owner' });
     await controller.get('abc123', 'Bearer owner-token');
     expect(prisma.room.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { OR: [{ id: 'abc123' }, { inviteCode: 'ABC123' }] } }));
-    expect(studio.getForRoom).toHaveBeenCalledWith('room-9');
+    expect(studio.getForRoom).toHaveBeenCalledWith('room-9', 'user-owner');
   });
 
   it('PUT provider delega para o serviço', async () => {
@@ -93,7 +93,7 @@ describe('RoomStudioController', () => {
   it('POST provider/test delega para o serviço', async () => {
     const { controller, studio } = makeController();
     await controller.testProvider('room-1', { baseUrl: 'https://x', model: 'm' }, 'Bearer owner-token');
-    expect(studio.testProvider).toHaveBeenCalledWith('room-1', { baseUrl: 'https://x', model: 'm' });
+    expect(studio.testProvider).toHaveBeenCalledWith('room-1', 'user-owner', { baseUrl: 'https://x', model: 'm' });
   });
 
   it('PUT agent delega para o serviço', async () => {

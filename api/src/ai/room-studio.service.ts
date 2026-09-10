@@ -4,6 +4,12 @@ import { PrismaService } from '../prisma.service.js';
 import { maskApiKey, normalizeBaseUrl } from './studio-utils.js';
 import type { AgentSummary, ProviderSummary, StudioSnapshot } from './studio.service.js';
 
+type StudioSource = 'room' | 'account' | 'system';
+export type RoomStudioSnapshot = StudioSnapshot & {
+  account: StudioSnapshot;
+  sources: { provider: StudioSource; agent: StudioSource; rules: StudioSource };
+};
+
 const snapshotProvider = (provider: { id: string; name: string; baseUrl: string; model: string; isActive: boolean; apiKey: string }) => ({
   name: provider.name,
   baseUrl: provider.baseUrl,
@@ -17,17 +23,32 @@ const snapshotProvider = (provider: { id: string; name: string; baseUrl: string;
 export class RoomStudioService {
   constructor(private readonly prisma: PrismaService, private readonly llm: LlmClient) {}
 
-  async getForRoom(roomId: string): Promise<StudioSnapshot> {
+  async getForRoom(roomId: string, ownerUserId: string): Promise<RoomStudioSnapshot> {
     const prisma = this.prisma as any;
-    const [provider, agent, rules] = await Promise.all([
+    const [provider, agent, rules, accountProvider, accountAgent, accountRules] = await Promise.all([
       prisma.roomLlmProvider?.findFirst?.({ where: { roomId } }) ?? Promise.resolve(null),
       prisma.roomAiAgent?.findUnique?.({ where: { roomId } }) ?? Promise.resolve(null),
       prisma.roomBusinessRule?.findMany?.({ where: { roomId }, orderBy: { order: 'asc' }, select: { content: true } }) ?? Promise.resolve([]),
+      typeof ownerUserId === 'string' ? this.prisma.llmProvider.findFirst({ where: { userId: ownerUserId, isActive: true } }) : Promise.resolve(null),
+      this.prisma.aiAgent.findUnique({ where: { userId: ownerUserId } }),
+      this.prisma.businessRule.findMany({ where: { userId: ownerUserId }, orderBy: { order: 'asc' }, select: { content: true } }),
     ]);
+    const roomRules = (rules ?? []).map((rule: { content: string }) => rule.content);
+    const accountRulesText = (accountRules ?? []).map((rule: { content: string }) => rule.content);
     return {
       provider: provider ? snapshotProvider(provider) : null,
       agent: agent ? { name: agent.name, avatar: agent.avatar, systemPrompt: agent.systemPrompt } : null,
-      rules: rules.map((rule: { content: string }) => rule.content),
+      rules: roomRules,
+      account: {
+        provider: accountProvider ? snapshotProvider(accountProvider) : null,
+        agent: accountAgent ? { name: accountAgent.name, avatar: accountAgent.avatar, systemPrompt: accountAgent.systemPrompt } : null,
+        rules: accountRulesText,
+      },
+      sources: {
+        provider: provider ? 'room' : accountProvider ? 'account' : 'system',
+        agent: agent ? 'room' : accountAgent ? 'account' : 'system',
+        rules: roomRules.length > 0 ? 'room' : accountRulesText.length > 0 ? 'account' : 'system',
+      },
     };
   }
 
@@ -74,13 +95,30 @@ export class RoomStudioService {
   }
 
   /** Dispara uma chamada mínima de votação para validar credencial/host/modelo. Senha válida => ok + latência. */
-  async testProvider(roomId: string, input: { baseUrl?: string; apiKey?: string; model?: string }): Promise<{ ok: true; latencyMs: number }> {
+  async inheritProvider(roomId: string): Promise<void> {
     const prisma = this.prisma as any;
-    const existing = await prisma.roomLlmProvider?.findFirst?.({ where: { roomId } });
+    await prisma.roomLlmProvider?.deleteMany?.({ where: { roomId } });
+  }
+
+  async inheritAgent(roomId: string): Promise<void> {
+    await this.prisma.roomAiAgent.deleteMany({ where: { roomId } });
+  }
+
+  async inheritRules(roomId: string): Promise<void> {
+    await this.prisma.roomBusinessRule.deleteMany({ where: { roomId } });
+  }
+
+  async testProvider(roomId: string, ownerUserId: string | { baseUrl?: string; apiKey?: string; model?: string }, input?: { baseUrl?: string; apiKey?: string; model?: string }): Promise<{ ok: true; latencyMs: number }> {
+    const prisma = this.prisma as any;
+    const providerInput = input ?? (typeof ownerUserId === 'string' ? {} : ownerUserId);
+    const [existing, accountProvider] = await Promise.all([
+      prisma.roomLlmProvider?.findFirst?.({ where: { roomId } }) ?? Promise.resolve(null),
+      typeof ownerUserId === 'string' ? this.prisma.llmProvider.findFirst({ where: { userId: ownerUserId, isActive: true } }) : Promise.resolve(null),
+    ]);
     const options = {
-      baseUrl: input.baseUrl || existing?.baseUrl || undefined,
-      apiKey: input.apiKey || existing?.apiKey || undefined,
-      model: input.model || existing?.model || undefined,
+      baseUrl: providerInput.baseUrl || existing?.baseUrl || accountProvider?.baseUrl || undefined,
+      apiKey: providerInput.apiKey || existing?.apiKey || accountProvider?.apiKey || undefined,
+      model: providerInput.model || existing?.model || accountProvider?.model || undefined,
     };
     const started = Date.now();
     try {
