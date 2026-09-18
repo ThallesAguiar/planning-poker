@@ -298,7 +298,105 @@ await h.gateway.removeParticipant(po.client as any, { participantId: removedId }
     expect(errorCodes(dev)).toContain('NOT_PARTICIPANT');
   });
 
-it('same session reconnection reuses the participant and disconnects the stale socket', async () => {
+it('removes a participant automatically after the disconnect grace window (window close)', async () => {
+    vi.useFakeTimers();
+    try {
+      const h = buildHarness();
+      const po = newClient('sock-po');
+      const dev = newClient('sock-dev');
+      await joinRoom(h, po);
+      await joinRoom(h, dev);
+      const devPid = dev.client.data.participantId;
+
+      h.gateway.handleDisconnect(dev.client as any);
+
+      // Durante a janela de tolerância o participante segue na mesa (marcado desconectado).
+      expect(latestRoomState(h)?.participants.some((p: any) => p.id === devPid)).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      const final = latestRoomState(h);
+      expect(final.participants.some((p: any) => p.id === devPid)).toBe(false);
+      // Histórico preservado: associação marcada inativa (não deletada).
+      expect(h.prisma.roomParticipant.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: devPid },
+        data: expect.objectContaining({ status: 'inativo' }),
+      }));
+      const removed = h.server.serverEvents.find((e) => e.event === 'room:participantUpdate' && e.payload.reason === 'removed');
+      expect(removed?.payload.participant.id).toBe(devPid);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps a participant who reconnects within the grace window (refresh)', async () => {
+    vi.useFakeTimers();
+    try {
+      const h = buildHarness();
+      const po = newClient('sock-po');
+      const dev = newClient('sock-dev');
+      await joinRoom(h, po);
+      await joinRoom(h, dev);
+      const devPid = dev.client.data.participantId;
+      const sessionId = `session-${dev.client.id}`;
+
+      h.gateway.handleDisconnect(dev.client as any);
+
+      // Mesma sessão volta antes de a tolerância expirar.
+      const dev2 = newClient('sock-dev2');
+      await joinRoom(h, dev2, { sessionId });
+      expect(dev2.client.data.participantId).toBe(devPid);
+
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      const final = latestRoomState(h);
+      const devInRoom = final.participants.find((p: any) => p.id === devPid);
+      expect(devInRoom).toBeDefined();
+      expect(devInRoom.connected).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('removes immediately on explicit leave (logout)', async () => {
+    const h = buildHarness();
+    const po = newClient('sock-po');
+    const dev = newClient('sock-dev');
+    await joinRoom(h, po);
+    await joinRoom(h, dev);
+    const devPid = dev.client.data.participantId;
+
+    await h.gateway.leave(dev.client as any);
+
+    const final = latestRoomState(h);
+    expect(final.participants.some((p: any) => p.id === devPid)).toBe(false);
+    const removed = h.server.serverEvents.find((e) => e.event === 'room:participantUpdate' && e.payload.reason === 'removed');
+    expect(removed?.payload.participant.id).toBe(devPid);
+  });
+
+  it('re-elects a new owner when the PO leaves the room', async () => {
+    const h = buildHarness();
+    const po = newClient('sock-po');
+    const dev = newClient('sock-dev');
+    await joinRoom(h, po);
+    await joinRoom(h, dev);
+    const poPid = po.client.data.participantId;
+    const devPid = dev.client.data.participantId;
+    expect(latestRoomState(h)?.ownerId).toBe(poPid);
+
+    await h.gateway.leave(po.client as any);
+
+    const final = latestRoomState(h);
+    expect(final.participants.some((p: any) => p.id === poPid)).toBe(false);
+    expect(final.ownerId).toBe(devPid);
+    expect(final.participants.find((p: any) => p.id === devPid).role).toBe('PO');
+    expect(h.prisma.room.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'room-1' },
+      data: expect.objectContaining({ ownerId: devPid }),
+    }));
+  });
+
+  it('same session reconnection reuses the participant and disconnects the stale socket', async () => {
     const first = newClient('sock-a');
     await joinRoom(h, first, { sessionId: 'same-session' });
     const firstPid = first.client.data.participantId;

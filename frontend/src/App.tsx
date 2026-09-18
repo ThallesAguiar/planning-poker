@@ -561,6 +561,8 @@ export function App({ mode }: { mode: "home" | "room" }) {
     if (accountToken) await logoutAccount(accountToken).catch(() => undefined);
     clearAccountSession();
     clearState();
+    // Sai da mesa explicitamente para o servidor liberar a vaga imediatamente.
+    if (socket.connected) socket.emit("room:leave");
     socket.disconnect();
     setJoined(false);
     joinedRef.current = false;

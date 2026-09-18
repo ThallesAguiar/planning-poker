@@ -44,6 +44,10 @@ export class RoomGateway {
   @WebSocketServer() server!: Server;
   private readonly states = new Map<string, InternalRoomState>();
   private readonly clientRooms = new Map<string, string>();
+  /** Timers de remoção agendados para participantes desconectados (janela/aba fechadas). */
+  private readonly pendingRemovalTimers = new Map<string, NodeJS.Timeout>();
+  /** Janela de tolerância após a desconexão do socket antes de remover o participante da mesa. */
+  private readonly disconnectGraceMs = Number(process.env.ROOM_DISCONNECT_GRACE_MS ?? 30000) || 30000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -160,6 +164,7 @@ export class RoomGateway {
       status: participantRow.status as 'ativo' | 'inativo',
     });
     this.presence.connectParticipant(state, materialized.id, client.id);
+    this.cancelPendingRemoval(materialized.id);
     if (state.ownerId === 'pending') {
       state.ownerId = materialized.id;
       await this.prisma.room.update({ where: { id: state.dbRoomId }, data: { ownerId: materialized.id } });
@@ -179,7 +184,7 @@ export class RoomGateway {
     this.broadcastRoom(state);
   }
 
-  @SubscribeMessage('room:leave') leave(@ConnectedSocket() client: Client) { this.removeClient(client); }
+  @SubscribeMessage('room:leave') leave(@ConnectedSocket() client: Client) { return this.leaveRoom(client); }
   handleDisconnect(client: Client) { this.removeClient(client); }
 
   @SubscribeMessage('room:profileUpdate')
@@ -702,6 +707,7 @@ export class RoomGateway {
     return this.authorization.canControlRoom(participant.id, participant.role, state.ownerId, role) ? state : undefined;
   }
 
+  /** Desconexão de socket (janela/aba fechada, refresh ou queda de rede): marca offline e agenda remoção após a tolerância. */
   private removeClient(client: Client) {
     const roomId = this.clientRooms.get(client.id);
     if (!roomId) return;
@@ -712,9 +718,74 @@ export class RoomGateway {
       if (change) {
         this.emitParticipantUpdate(state, change);
         this.broadcastRoom(state);
+        this.scheduleRemoval(state, participantId);
       }
     }
     this.clientRooms.delete(client.id);
+  }
+
+  /** Saída explícita (logout / room:leave): remove o participante da mesa imediatamente, sem esperar a tolerância. */
+  private async leaveRoom(client: Client) {
+    const roomId = this.clientRooms.get(client.id);
+    if (!roomId) return;
+    this.clientRooms.delete(client.id);
+    const state = this.states.get(roomId);
+    const participantId = (client as any).data?.participantId as string | undefined;
+    if (state && participantId) {
+      this.cancelPendingRemoval(participantId);
+      await this.removeParticipantFromLive(state, participantId, { requireNoSocket: false });
+    }
+  }
+
+  private scheduleRemoval(state: InternalRoomState, participantId: string) {
+    this.cancelPendingRemoval(participantId);
+    const timer = setTimeout(() => {
+      this.pendingRemovalTimers.delete(participantId);
+      void this.removeParticipantFromLive(state, participantId);
+    }, this.disconnectGraceMs);
+    this.pendingRemovalTimers.set(participantId, timer);
+  }
+
+  private cancelPendingRemoval(participantId: string) {
+    const timer = this.pendingRemovalTimers.get(participantId);
+    if (timer) {
+      clearTimeout(timer);
+      this.pendingRemovalTimers.delete(participantId);
+    }
+  }
+
+  /**
+   * Remove o participante da mesa viva. No caminho de tolerância de desconexão aborta se
+   * ele reconectou (outra socket ativa) — protege refresh e quedas curtas de rede.
+   * No caminho explícito (logout/room:leave) a remoção ocorre mesmo com socket ainda ativa.
+   */
+  private async removeParticipantFromLive(state: InternalRoomState, participantId: string, opts: { requireNoSocket?: boolean } = {}) {
+    if (!state.participants.some((item) => item.id === participantId)) return;
+    if (opts.requireNoSocket !== false && this.presence.socketCount(participantId) > 0) return;
+    this.cancelPendingRemoval(participantId);
+    const change = await this.presence.leave(state, participantId);
+    if (!change) return;
+    if (state.ownerId === participantId) await this.electOwner(state);
+    this.emitParticipantUpdate(state, change);
+    this.broadcastRoom(state);
+  }
+
+  /** Se o owner saiu, elege outro participante como PO (preferindo conectado e não-IA/Observador); sem candidatos, volta a 'pending'. */
+  private async electOwner(state: InternalRoomState) {
+    const candidates = state.participants.filter((item) => !item.isAI && item.role !== 'Observador');
+    const next = candidates.find((item) => item.connected) ?? candidates[0];
+    if (!next) {
+      state.ownerId = 'pending';
+      await this.prisma.room.update({ where: { id: state.dbRoomId }, data: { ownerId: 'pending' } });
+      return;
+    }
+    if (next.role !== 'PO') {
+      next.role = 'PO';
+      await this.prisma.roomParticipant.update({ where: { id: next.id }, data: { role: 'PO' } });
+    }
+    state.ownerId = next.id;
+    await this.prisma.room.update({ where: { id: state.dbRoomId }, data: { ownerId: next.id } });
+    this.emitParticipantUpdate(state, { participant: { ...next }, reason: 'owner' });
   }
 
   private async loadState(roomKey: string): Promise<InternalRoomState> {

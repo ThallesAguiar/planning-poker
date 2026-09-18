@@ -76,6 +76,21 @@ describe('PresenceService', () => {
     expect(prisma.roomParticipant.delete).toHaveBeenCalledWith({ where: { id: 'p2' } });
   });
 
+  it('leave marks the membership inactive (keeps history) and drops the participant from state', async () => {
+    const prisma = prismaMock();
+    const presence = new PresenceService(prisma as any);
+    const state = makeState();
+    presence.connectParticipant(state, 'p2', 'socket-a');
+    const change = await presence.leave(state, 'p2');
+    expect(change?.reason).toBe('removed');
+    expect(change?.participant.status).toBe('inativo');
+    expect(state.participants.find((p) => p.id === 'p2')).toBeUndefined();
+    expect(state.votes.some((v) => v.participantId === 'p2')).toBe(false);
+    expect(prisma.roomParticipant.update).toHaveBeenCalledWith({ where: { id: 'p2' }, data: expect.objectContaining({ status: 'inativo' }) });
+    // leave não apaga o histórico: nunca chama delete.
+    expect(prisma.roomParticipant.delete).not.toHaveBeenCalled();
+  });
+
   it('setStatus persists inativo and deactivates the participant', async () => {
     const prisma = prismaMock();
     const presence = new PresenceService(prisma as any);

@@ -82,6 +82,21 @@ export class PresenceService {
     return { participant, reason: 'removed', socketIds };
   }
 
+  /**
+   * Remove o participante da mesa viva sem apagar seu histórico (chat/votos/associação
+   * de conta). Marca a associação como inativa no banco para liberar a vaga e permitir
+   * que um rejoin futuro reative a sessão sem perder dados.
+   */
+  async leave(state: InternalRoomState, participantId: string): Promise<PresenceChange | null> {
+    const participant = state.participants.find((item) => item.id === participantId);
+    if (!participant) return null;
+    await this.prisma.roomParticipant.update({ where: { id: participantId }, data: { status: 'inativo', lastSeenAt: new Date() } });
+    this.participantSockets.delete(participantId);
+    state.participants = state.participants.filter((item) => item.id !== participantId);
+    state.votes = state.votes.filter((vote) => vote.participantId !== participantId);
+    return { participant: { ...participant, connected: false, status: 'inativo' }, reason: 'removed' };
+  }
+
   async setStatus(state: InternalRoomState, participantId: string, status: 'ativo' | 'inativo'): Promise<PresenceChange | null> {
     const participant = state.participants.find((item) => item.id === participantId);
     if (!participant) return null;
