@@ -231,6 +231,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] Estados de erro (room-error-toast), reconexao (connectionStatus), carregamento e sala encerrada.
 - [x] Teste visual e responsivo em desktop e mobile (Playwright com viewport 390x844).
 - [x] Login/cadastro basico, sessao de conta, `Minhas Salas` via API e rejoin por conta adicionados sem redesenho amplo; testes Playwright aprovados.
+- [x] `Minhas Salas` sem salas vinculadas: botao `Entrar` (que ia para a raiz no modo padrao) alterado para `Criar sala` levando a `/?create=1`, que abre o formulario de criacao; CTA `+ Criar nova sala` alinhado ao mesmo destino; `DashboardPages.tsx` e suporte a `?create=1` em `App.tsx` (`useSearchParams`).
 - [x] Painel de participantes com moderacao (remover, afastar/reativar, transferir PO).
 - [x] Modal de configuracao da sala permite ao PO alternar sala publica/privada, definir senha e remover participantes tambem em layout mobile.
 - [x] Campo de senha no modal de configuracao da sala segue o padrao visual dos demais inputs e ganhou icone de cadeado.
@@ -474,6 +475,7 @@ Legenda: `[x]` feito, `[~]` parcial, `[ ]` pendente.
 - [x] IA/Studio da mesa: painel agora permite herdar provedor, agente e regras do Studio da conta ou configurar valores proprios da mesa; heranca remove overrides via `DELETE /rooms/:id/ai-studio/{provider,agent,rules}` e permanece vinculada a futuras mudancas da conta.
 - [x] Qualidade: `npm test -- ai/room-studio.service.spec.ts ai/room-studio.controller.spec.ts ai/ai-participant.service.spec.ts` (34 testes), API `npm run build`, frontend `npm run build`/`npm run lint`, `docker compose up --build -d api frontend`, healthcheck e `curl -I http://localhost:5173` aprovados.
 - [x] Frontend Studio: textos explicativos adicionados no Studio da conta e no Studio da mesa sobre herdar agente/provedor/regras da conta, criar configuracao propria da mesa e efeito de voltar para heranca; frontend `npm run build`, `npm run lint` e `docker compose up --build -d frontend` aprovados.
+- [x] Frontend: botao vazio de `Minhas Salas` corrigido — `Criar sala` leva a `/?create=1` (formulario de criacao aberto); frontend `npm run build` e `npm run lint` aprovados.
 
 ## Ordem recomendada
 

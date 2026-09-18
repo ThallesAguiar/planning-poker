@@ -88,7 +88,7 @@ export function MyRoomsPage() {
           <h1>Minhas Salas</h1>
           <p>Participe ou crie uma nova sala para começar a estimar.</p>
         </div>
-        <Link className="primary dashboard-cta" to="/">+ Criar nova sala</Link>
+        <Link className="primary dashboard-cta" to="/?create=1">+ Criar nova sala</Link>
       </div>
       <div className="room-grid">
         {!accountToken && (
@@ -102,7 +102,7 @@ export function MyRoomsPage() {
           <article className="room-card">
             <h2>Nenhuma sala vinculada</h2>
             <p>Entre ou crie uma sala com sua conta para ela aparecer aqui.</p>
-            <Link className="primary room-action" to="/">Entrar</Link>
+            <Link className="primary room-action" to="/?create=1">Criar sala</Link>
           </article>
         )}
         {accountRooms.map((room) => (

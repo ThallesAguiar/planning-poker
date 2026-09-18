@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { socket } from "./lib/socket";
 import { authHeaders, getRoomDefaults, loginAccount, logoutAccount, registerAccount } from "./lib/auth";
 import { useAppStore } from "./stores/app-store";
@@ -103,8 +103,10 @@ export function App({ mode }: { mode: "home" | "room" }) {
   const [roomPassword, setRoomPassword] = useState("");
   const [joinError, setJoinError] = useState("");
   const [roomIsPrivate, setRoomIsPrivate] = useState(false);
-  const [homeMode, setHomeMode] = useState<"join" | "create">("join");
-  const [homeCard, setHomeCard] = useState<"account" | "room">("account");
+  const [searchParams] = useSearchParams();
+  const createRequested = searchParams.get("create") === "1";
+  const [homeMode, setHomeMode] = useState<"join" | "create">(createRequested ? "create" : "join");
+  const [homeCard, setHomeCard] = useState<"account" | "room">(createRequested ? "room" : "account");
   const [roomName, setRoomName] = useState("Sprint Planning");
   const [createPrivate, setCreatePrivate] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
