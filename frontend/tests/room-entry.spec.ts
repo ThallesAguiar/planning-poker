@@ -31,7 +31,7 @@ test("register shows name and avatar fields and creates account", async ({ page 
   await expect(page.getByLabel("Nome")).toBeVisible();
   await expect(page.getByText("Seu avatar")).toBeVisible();
 
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Nome").fill("Jogador E2E");
   await page.getByLabel("Senha da conta").fill("senha123");
   await page.getByRole("button", { name: "♠" }).click();
@@ -52,7 +52,7 @@ test("logs in with registered account and stays on home account card", async ({
   expect(register.ok()).toBeTruthy();
 
   await page.goto(appUrl);
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha da conta").fill("senha123");
   await page.getByRole("button", { name: "Entrar na conta" }).click();
 
@@ -145,7 +145,7 @@ test("does not enter private room with wrong password", async ({
 
   await expect(page).toHaveURL(appUrl);
   await expect(page.getByRole("alert")).toContainText(
-    "Senha invalida ou sala indisponivel.",
+    "Senha inválida ou sala indisponível.",
   );
   await expect(
     page.getByRole("button", { name: /Revelar cartas|Revelar votos/ }),
@@ -179,7 +179,7 @@ test("direct room entry with wrong password never flashes poker table", async ({
 
   await page.getByRole("button", { name: /^Entrar na sala/ }).click();
   await expect(page.getByRole("alert")).toContainText(
-    "Senha invalida ou sala indisponivel.",
+    "Senha inválida ou sala indisponível.",
   );
   await page.waitForTimeout(500);
 

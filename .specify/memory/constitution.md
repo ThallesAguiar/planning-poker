@@ -1,14 +1,9 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 -> 1.1.0
-- Modified constraints: Anthropic-specific AI integration -> configurable provider-neutral LLM integration
-- Version change: unversioned template -> 1.0.0
-- Modified principles: template placeholders -> all five project principles below
-- Added sections: Technology and Product Constraints; Delivery and Quality Gates
+- Version change: 1.1.0 -> 1.2.0
+- Modified principles: none
+- Added sections: frontend architecture constraint within Technology and Product Constraints
 - Removed sections: none
-- Templates requiring updates: ✅ .specify/templates/plan-template.md; ✅ .specify/templates/tasks-template.md;
-  ✅ .specify/templates/spec-template.md (validated); ✅ .specify/templates/commands/ (none present);
-  ✅ README.md (validated)
 - Follow-up TODOs: ratification date remains TODO because repository history does not identify the
   original governance adoption date.
 -->
@@ -69,6 +64,15 @@ participant, using an OpenAI-compatible endpoint or a provider-specific adapter 
 PostgreSQL, and Redis services, healthchecks, healthy dependencies, environment-based secrets, and
 automatic development migrations.
 
+The frontend MUST keep feature and framework concerns discoverable: `pages` own route-level
+composition; `components` contain reusable UI and layout; `api` and `services` isolate HTTP and
+external integration; `context` or the approved global-state library owns shared state; `hooks`
+hold reusable React logic; `data` holds static domain content; `assets` holds static files; and
+`utils` holds pure helpers. A maintained route library MUST define application route mapping and
+route guards. New top-level frontend folders require a documented responsibility and MUST NOT
+duplicate an existing layer. This makes feature work navigable while retaining clear dependency
+boundaries.
+
 The product MUST support room configuration, role permissions, private-room access, server timers,
 hidden votes before reveal, discussion and revote flows, chat, reconnection, AI participation when
 enabled, and persistent sprint reporting. PDF and CSV export, historical reports, and full account
@@ -98,4 +102,4 @@ clarifications or non-semantic wording changes. Compliance MUST be reviewed at f
 implementation completion, and release review. Reviewers MUST reject unsupported completion claims,
 missing persistence or authorization checks, and unverified realtime behavior.
 
-**Version**: 1.1.0 | **Ratified**: TODO(RATIFICATION_DATE): original adoption date unknown | **Last Amended**: 2026-08-28
+**Version**: 1.2.0 | **Ratified**: TODO(RATIFICATION_DATE): original adoption date unknown | **Last Amended**: 2026-09-18

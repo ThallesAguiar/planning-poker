@@ -90,7 +90,8 @@ export class PresenceService {
   async leave(state: InternalRoomState, participantId: string): Promise<PresenceChange | null> {
     const participant = state.participants.find((item) => item.id === participantId);
     if (!participant) return null;
-    await this.prisma.roomParticipant.update({ where: { id: participantId }, data: { status: 'inativo', lastSeenAt: new Date() } });
+    // The room can be deleted while a socket disconnects; this cleanup is idempotent.
+    await this.prisma.roomParticipant.updateMany({ where: { id: participantId }, data: { status: 'inativo', lastSeenAt: new Date() } });
     this.participantSockets.delete(participantId);
     state.participants = state.participants.filter((item) => item.id !== participantId);
     state.votes = state.votes.filter((vote) => vote.participantId !== participantId);

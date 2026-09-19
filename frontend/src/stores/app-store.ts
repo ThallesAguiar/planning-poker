@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { RoomJoinRequest, RoomRoleChangeRequest, RoomState } from '@planning-poker/shared-types';
-import type { AccountRoom, AuthUser } from '../lib/auth';
+import type { AccountRoom, AuthUser } from '../api/auth';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 export type AiStatus = 'idle' | 'voting' | 'voted' | 'discussing' | 'discussed' | 'unavailable' | 'error';
@@ -22,6 +22,7 @@ type AppState = {
   roomError: RoomError;
   account: AuthUser | null;
   accountToken: string;
+  accountExpiresAt: string;
   accountRooms: AccountRoom[];
   reactions: FloatingReaction[];
   confetti: boolean;
@@ -36,7 +37,7 @@ type AppState = {
   setSelfId: (selfId: string) => void;
   setAiStatus: (aiStatus: AiStatus) => void;
   setRoomError: (roomError: RoomError) => void;
-  setAccountSession: (account: AuthUser, token: string) => void;
+  setAccountSession: (account: AuthUser, token: string, expiresAt: string) => void;
   patchAccount: (account: AuthUser) => void;
   clearAccountSession: () => void;
   setAccountRooms: (rooms: AccountRoom[]) => void;
@@ -69,6 +70,7 @@ export const useAppStore = create<AppState>((set) => ({
   roomError: null,
   account: storedAccount(),
   accountToken: localStorage.getItem('planning-poker-account-token') ?? '',
+  accountExpiresAt: localStorage.getItem('planning-poker-account-expires-at') ?? '',
   accountRooms: [],
   reactions: [],
   confetti: false,
@@ -128,10 +130,11 @@ export const useAppStore = create<AppState>((set) => ({
   setSelfId: (selfId) => set({ selfId }),
   setAiStatus: (aiStatus) => set({ aiStatus }),
   setRoomError: (roomError) => set({ roomError }),
-  setAccountSession: (account, token) => {
+  setAccountSession: (account, token, expiresAt) => {
     localStorage.setItem('planning-poker-account', JSON.stringify(account));
     localStorage.setItem('planning-poker-account-token', token);
-    set({ account, accountToken: token });
+    localStorage.setItem('planning-poker-account-expires-at', expiresAt);
+    set({ account, accountToken: token, accountExpiresAt: expiresAt });
   },
   patchAccount: (account) => {
     localStorage.setItem('planning-poker-account', JSON.stringify(account));
@@ -140,7 +143,8 @@ export const useAppStore = create<AppState>((set) => ({
   clearAccountSession: () => {
     localStorage.removeItem('planning-poker-account');
     localStorage.removeItem('planning-poker-account-token');
-    set({ account: null, accountToken: '', accountRooms: [] });
+    localStorage.removeItem('planning-poker-account-expires-at');
+    set({ account: null, accountToken: '', accountExpiresAt: '', accountRooms: [] });
   },
   setAccountRooms: (accountRooms) => set({ accountRooms }),
   setSocketConnected: (isSocketConnected) => set({ isSocketConnected }),

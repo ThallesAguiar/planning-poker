@@ -78,6 +78,11 @@ create: vi.fn(async (args: any) => {
         return row;
       }),
       update: vi.fn(async (args: any) => Object.assign(participantsById.get(args.where.id), args.data)),
+      updateMany: vi.fn(async (args: any) => {
+        const participant = participantsById.get(args.where.id);
+        if (participant) Object.assign(participant, args.data);
+        return { count: participant ? 1 : 0 };
+      }),
       delete: vi.fn(async (args: any) => {
         const row = participantsById.get(args.where.id);
         participantsByUser.delete(row?.userId);
@@ -105,6 +110,7 @@ create: vi.fn(async (args: any) => {
   };
 
   const serverEvents: { roomId: string; event: string; payload: any }[] = [];
+  const disconnectedRooms: string[] = [];
   const clientsBySocket = new Map<string, ClientContext>();
 
   const server = {
@@ -114,6 +120,7 @@ create: vi.fn(async (args: any) => {
     to: (roomId: string) => ({
       emit: (event: string, payload: any) => serverEvents.push({ roomId, event, payload }),
     }),
+    in: (roomId: string) => ({ disconnectSockets: () => disconnectedRooms.push(roomId) }),
   };
 
   const sessions = new SessionService();
@@ -139,7 +146,7 @@ create: vi.fn(async (args: any) => {
     broadcast: (state) => (gateway as any).broadcastRoom(state),
   });
 
-  return { prisma, gateway, server, sessions, storyId: () => stories[0]?.id, newClient, ai, room };
+  return { prisma, gateway, server, sessions, storyId: () => stories[0]?.id, newClient, ai, room, disconnectedRooms };
 }
 
 type ClientContext = {
@@ -191,6 +198,18 @@ describe('RoomGateway (multi-client integration)', () => {
 
   beforeEach(() => {
     h = buildHarness();
+  });
+
+  it('closes live sockets and cached state when a room is deleted', async () => {
+    const participant = newClient('sock-delete');
+    await joinRoom(h, participant);
+
+    await h.gateway.closeRoom('room-1');
+
+    expect((h.gateway as any).states.has('CODE')).toBe(false);
+    expect((h.gateway as any).clientRooms.has('sock-delete')).toBe(false);
+    expect(h.disconnectedRooms).toEqual(['CODE']);
+    expect(h.server.serverEvents).toContainEqual(expect.objectContaining({ roomId: 'CODE', event: 'room:error' }));
   });
 
   it('runs a full round: present -> vote -> reveal -> discussion -> revote -> finalize', async () => {
@@ -318,7 +337,7 @@ it('removes a participant automatically after the disconnect grace window (windo
       const final = latestRoomState(h);
       expect(final.participants.some((p: any) => p.id === devPid)).toBe(false);
       // Histórico preservado: associação marcada inativa (não deletada).
-      expect(h.prisma.roomParticipant.update).toHaveBeenCalledWith(expect.objectContaining({
+      expect(h.prisma.roomParticipant.updateMany).toHaveBeenCalledWith(expect.objectContaining({
         where: { id: devPid },
         data: expect.objectContaining({ status: 'inativo' }),
       }));

@@ -19,7 +19,7 @@ export class SessionService {
 
   issueAccount(userId: string) {
     const session: AccountSession = { type: 'account', userId };
-    const token = jwt.sign(session, this.secret, { expiresIn: this.accountTtl as SignOptions['expiresIn'] });
+    const token = jwt.sign(session, this.secret, { expiresIn: this.accountTtl as SignOptions['expiresIn'], jwtid: randomUUID() });
     const decoded = jwt.decode(token);
     const expiresAt = decoded && typeof decoded === 'object' && typeof decoded.exp === 'number'
       ? new Date(decoded.exp * 1000).toISOString()

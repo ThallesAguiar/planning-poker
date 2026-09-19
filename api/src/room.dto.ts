@@ -52,6 +52,11 @@ export class JoinRoomDto {
   sessionId?: string;
 }
 
+export class ClaimGuestOwnerDto {
+  @IsString()
+  guestToken!: string;
+}
+
 export class UpdateRoomProfileDto {
   @IsOptional()
   @IsString()

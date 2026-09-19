@@ -9,7 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     instrument: ObserveInstrument,
   });
-  app.enableCors();
+  app.enableCors({ origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'], credentials: true });
   app.use((request: any, response: any, next: () => void) => { const correlationId = request.header('x-request-id') || randomUUID(); request.correlationId = correlationId; response.setHeader('x-request-id', correlationId); next(); });
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
   await app.listen(config.port);

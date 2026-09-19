@@ -10,6 +10,12 @@ function prismaMock() {
       create: vi.fn(),
       update: vi.fn(),
     },
+    refreshSession: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
     roomParticipant: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -52,6 +58,24 @@ describe('AuthService', () => {
     const service = new AuthService(prisma as any, new SessionService());
 
     await expect(service.login({ email: 'ana@example.com', password: 'wrong' })).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rotates valid refresh session and rejects a revoked one', async () => {
+    const prisma = prismaMock();
+    prisma.refreshSession.findUnique.mockResolvedValue({
+      id: 'refresh-1',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      user: { id: 'user-1', email: 'ana@example.com', name: 'Ana', avatarUrl: '', isGuest: false },
+    });
+    const service = new AuthService(prisma as any, new SessionService());
+
+    const result = await service.refresh('refresh-token');
+
+    expect(result.token).toBeTruthy();
+    expect(result.refreshToken).toBeTruthy();
+    expect(prisma.refreshSession.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'refresh-1' } }));
+    expect(prisma.refreshSession.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ userId: 'user-1' }) }));
   });
 
   it('updateProfile trims and persists name, returns safe user', async () => {

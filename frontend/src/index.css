@@ -162,7 +162,18 @@ button:focus-visible, input:focus-visible { outline: 3px solid #d7f36a; outline-
 .dashboard-cta, .room-action { text-decoration: none; text-align: center; }
 .room-grid { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 18px; }
 .room-card, .profile-card, .settings-panel { border: 1px solid #ffffff1f; border-radius: 8px; background: linear-gradient(145deg, #17261f, #111a16); box-shadow: inset 0 1px 0 #ffffff0f; }
-.room-card { min-height: 230px; display: flex; flex-direction: column; padding: 22px; }
+.room-card { min-height: 230px; display: flex; flex-direction: column; padding: 22px; position: relative; }
+.room-delete-button { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border: 1px solid #d85a5a88; border-radius: 50%; background: #3a1717; color: #ffaaa5; font-size: 22px; line-height: 20px; cursor: pointer; }
+.room-delete-button:hover:not(:disabled) { background: #7a2424; color: #fff; }
+.room-delete-button:disabled { cursor: wait; opacity: .65; }
+.room-delete-modal { width: min(100%, 500px); }
+.room-delete-modal-body { display: grid; gap: 14px; padding: 22px 20px; }
+.room-delete-modal-body p { margin: 0; color: #dce7db; line-height: 1.55; }
+.room-delete-modal-body p + p { color: #ffb4ac; }
+.room-delete-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+.danger { border: 1px solid #e46b62; border-radius: 6px; padding: 10px 14px; background: #a53c36; color: #fff4f1; font-weight: 800; cursor: pointer; }
+.danger:hover:not(:disabled) { background: #c64c44; }
+.danger:disabled { cursor: wait; opacity: .65; }
 .room-card h2 { margin: 0 0 12px; font-size: 18px; }
 .room-card p, .room-card small { color: #aeb9ab; font-size: 12px; }
 .room-meta { display: flex; gap: 10px; margin: auto 0 18px; }
@@ -466,6 +477,10 @@ button:focus-visible, input:focus-visible { outline: 3px solid #d7f36a; outline-
 .studio-preview { display: grid; gap: 5px; margin: 10px 0 12px; padding: 12px; border: 1px solid #ffffff14; border-radius: 8px; background: #0c1511; color: #dfe8db; overflow-wrap: anywhere; }
 .studio-preview b { color: #f5f0e8; font-size: 13px; }
 .studio-preview span, .studio-preview small { color: #9aa69c; font-size: 12px; line-height: 1.4; }
+.room-studio-title { align-items: flex-start; gap: 16px; }
+.room-studio-title .studio-note { max-width: 720px; margin-bottom: 0; }
+.room-studio-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.room-studio-actions .secondary { white-space: nowrap; }
 
 @media (max-width: 700px) {
   .justification-modal-backdrop { padding: 12px; }

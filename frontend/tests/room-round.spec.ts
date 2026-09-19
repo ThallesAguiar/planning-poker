@@ -47,8 +47,8 @@ test("full round with two sessions: story, vote, reveal gating, discussion, revo
   await expect(pageA.getByText("Login OAuth")).toBeVisible();
 
   await pageA.getByRole("button", { name: "Iniciar rodada" }).click();
-  await expect(pageA.getByText("Proteger rotas privadas")).toBeVisible();
-  await expect(pageB.getByText("Proteger rotas privadas")).toBeVisible();
+  await expect(pageA.getByText("Proteger rotas privadas").first()).toBeVisible();
+  await expect(pageB.getByText("Proteger rotas privadas").first()).toBeVisible();
   await expect(pageA.getByText(/Fase: Votação/)).toBeVisible();
 
   // still blocked before any vote
@@ -58,12 +58,12 @@ test("full round with two sessions: story, vote, reveal gating, discussion, revo
   await pageA.locator(".card", { hasText: /^5$/ }).click();
   await pageA.getByRole("button", { name: "Jogar carta" }).click();
   await expect(pageA.getByText("Carta jogada", { exact: false })).toBeVisible();
-  await expect(pageA.getByText(/1 de 2 jogaram/)).toBeVisible();
+  await expect(pageA.getByText(/1 de 2 jogaram/).first()).toBeVisible();
 
   // Bia votes 8 -> reveal becomes enabled
   await pageB.locator(".card", { hasText: /^8$/ }).click();
   await pageB.getByRole("button", { name: "Jogar carta" }).click();
-  await expect(pageA.getByText(/2 de 2 jogaram/)).toBeVisible();
+  await expect(pageA.getByText(/2 de 2 jogaram/).first()).toBeVisible();
   await expect(pageA.getByRole("button", { name: "Revelar cartas" })).toBeEnabled();
 
   // reveal -> divergence opens discussion

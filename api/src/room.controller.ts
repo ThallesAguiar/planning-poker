@@ -1,17 +1,23 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Res, UnauthorizedException } from '@nestjs/common';
 import type { Response } from 'express';
 import { RoomService } from './room.service.js';
-import { CreateRoomDto, CreateStoryDto, JoinRoomDto, UpdateRoomProfileDto } from './room.dto.js';
+import { ClaimGuestOwnerDto, CreateRoomDto, CreateStoryDto, JoinRoomDto, UpdateRoomProfileDto } from './room.dto.js';
 import { AuthorizationService } from './auth/authorization.service.js';
+import { RoomGateway } from './room.gateway.js';
 
 @Controller('rooms')
 export class RoomController {
-  constructor(private readonly rooms: RoomService, private readonly authorization: AuthorizationService) {}
+  constructor(private readonly rooms: RoomService, private readonly authorization: AuthorizationService, private readonly gateway: RoomGateway) {}
   @Post() create(@Body() body: CreateRoomDto) { return this.rooms.create(body.name ?? 'Planning Poker', body.visibility ?? 'PUBLIC', body.password, body.config); }
   @Get('mine') mine(@Headers('authorization') authorization?: string) {
     const account = this.authorization.accountFromAuthorization(authorization);
     if (!account) throw new UnauthorizedException('UNAUTHENTICATED');
     return this.rooms.mine(account.userId);
+  }
+  @Delete(':id') async remove(@Param('id') id: string, @Headers('authorization') authorization?: string) {
+    const account = this.authorization.accountFromAuthorization(authorization);
+    if (!account) throw new UnauthorizedException('UNAUTHENTICATED');
+    return this.rooms.remove(id, account.userId, (roomId) => this.gateway.closeRoom(roomId));
   }
   @Get(':id') get(@Param('id') id: string) { return this.rooms.get(id); }
   @Post(':id/join') async join(@Param('id') id: string, @Body() body: JoinRoomDto, @Headers('authorization') authorization: string | undefined, @Res({ passthrough: true }) response: Response) {
@@ -25,6 +31,11 @@ export class RoomController {
     const account = this.authorization.accountFromAuthorization(authorization);
     if (!account) throw new UnauthorizedException('UNAUTHENTICATED');
     return this.rooms.rejoinSession(id, account.userId);
+  }
+  @Post(':id/claim-owner') claimOwner(@Param('id') id: string, @Body() body: ClaimGuestOwnerDto, @Headers('authorization') authorization?: string) {
+    const account = this.authorization.accountFromAuthorization(authorization);
+    if (!account) throw new UnauthorizedException('UNAUTHENTICATED');
+    return this.rooms.claimGuestOwnership(id, account.userId, body.guestToken);
   }
   @Patch(':id/members/me') updateMe(@Param('id') id: string, @Body() body: UpdateRoomProfileDto, @Headers('authorization') authorization?: string) {
     const account = this.authorization.accountFromAuthorization(authorization);

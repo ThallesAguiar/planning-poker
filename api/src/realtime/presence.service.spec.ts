@@ -28,7 +28,11 @@ function makeState(): InternalRoomState {
 
 function prismaMock() {
   return {
-    roomParticipant: { delete: vi.fn(async () => ({})), update: vi.fn(async (args: any) => ({ id: args.where.id, ...args.data })) },
+    roomParticipant: {
+      delete: vi.fn(async () => ({})),
+      update: vi.fn(async (args: any) => ({ id: args.where.id, ...args.data })),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+    },
     room: { update: vi.fn(async () => ({})) },
   };
 }
@@ -86,7 +90,7 @@ describe('PresenceService', () => {
     expect(change?.participant.status).toBe('inativo');
     expect(state.participants.find((p) => p.id === 'p2')).toBeUndefined();
     expect(state.votes.some((v) => v.participantId === 'p2')).toBe(false);
-    expect(prisma.roomParticipant.update).toHaveBeenCalledWith({ where: { id: 'p2' }, data: expect.objectContaining({ status: 'inativo' }) });
+    expect(prisma.roomParticipant.updateMany).toHaveBeenCalledWith({ where: { id: 'p2' }, data: expect.objectContaining({ status: 'inativo' }) });
     // leave não apaga o histórico: nunca chama delete.
     expect(prisma.roomParticipant.delete).not.toHaveBeenCalled();
   });

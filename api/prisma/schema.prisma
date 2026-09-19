@@ -44,6 +44,18 @@ model User {
   llmProviders LlmProvider[]
   aiAgent AiAgent?
   businessRules BusinessRule[]
+  refreshSessions RefreshSession[]
+}
+model RefreshSession {
+  id String @id @default(cuid())
+  userId String
+  tokenHash String @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  rotatedAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, expiresAt])
 }
 model LlmProvider {
   id String @id @default(cuid())

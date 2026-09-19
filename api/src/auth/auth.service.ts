@@ -1,11 +1,13 @@
 import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import bcrypt from 'bcrypt';
+import { createHash, randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma.service.js';
 import { SessionService } from './session.service.js';
 import { RoomGateway } from '../room.gateway.js';
 import type { AuthResponse, SafeAuthUser } from './auth.dto.js';
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
+type AuthSessionWithRefresh = AuthResponse & { refreshToken: string };
 
 @Injectable()
 export class AuthService {
@@ -15,7 +17,7 @@ export class AuthService {
     private readonly roomGateway: RoomGateway,
   ) {}
 
-  async register(input: { email: string; password: string; name: string; avatar?: string; claimGuestSessionToken?: string }): Promise<AuthResponse> {
+  async register(input: { email: string; password: string; name: string; avatar?: string; claimGuestSessionToken?: string }): Promise<AuthSessionWithRefresh> {
     const email = normalizeEmail(input.email);
     if (input.password.length < 8) throw new BadRequestException('INVALID_INPUT');
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -39,7 +41,7 @@ export class AuthService {
     return this.withSession(user);
   }
 
-  async login(input: { email: string; password: string }): Promise<AuthResponse> {
+  async login(input: { email: string; password: string }): Promise<AuthSessionWithRefresh> {
     const user = await this.prisma.user.findUnique({ where: { email: normalizeEmail(input.email) } });
     if (!user?.passwordHash || !(await bcrypt.compare(input.password, user.passwordHash))) {
       throw new UnauthorizedException('INVALID_CREDENTIALS');
@@ -69,6 +71,18 @@ export class AuthService {
     return this.safeUser(user);
   }
 
+  async refresh(refreshToken: string): Promise<AuthSessionWithRefresh> {
+    const stored = await this.prisma.refreshSession.findUnique({
+      where: { tokenHash: this.refreshTokenHash(refreshToken) },
+      include: { user: true },
+    });
+    if (!stored || stored.revokedAt || stored.expiresAt <= new Date() || stored.user.isGuest || !stored.user.email) {
+      throw new UnauthorizedException('UNAUTHENTICATED');
+    }
+    await this.prisma.refreshSession.update({ where: { id: stored.id }, data: { revokedAt: new Date(), rotatedAt: new Date() } });
+    return this.withSession(stored.user);
+  }
+
   /** Propaga nome/avatar da conta para os participantes ativos do usuario e notifica as salas em tempo real. */
   private async syncActiveRooms(userId: string, patch: { name?: string; avatar?: string }) {
     const memberships = await this.prisma.roomParticipant.findMany({
@@ -85,13 +99,33 @@ export class AuthService {
     }
   }
 
-  logout(token: string) {
-    this.sessions.revokeAccount(token);
+  async logout(token?: string, refreshToken?: string) {
+    if (token) {
+      try {
+        this.sessions.revokeAccount(token);
+      } catch {
+        // Expired access tokens cannot block refresh-session revocation.
+      }
+    }
+    if (refreshToken) {
+      await this.prisma.refreshSession.updateMany({
+        where: { tokenHash: this.refreshTokenHash(refreshToken), revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
   }
 
-  private async withSession(user: { id: string; email: string | null; name: string; avatarUrl: string | null }): Promise<AuthResponse> {
+  private async withSession(user: { id: string; email: string | null; name: string; avatarUrl: string | null }): Promise<AuthSessionWithRefresh> {
     const session = this.sessions.issueAccount(user.id);
-    return { user: this.safeUser(user), token: session.token, expiresAt: session.expiresAt };
+    const refreshToken = randomBytes(48).toString('base64url');
+    const refreshDays = Number(process.env.REFRESH_SESSION_TTL_DAYS ?? 30);
+    const expiresAt = new Date(Date.now() + Math.max(1, refreshDays) * 24 * 60 * 60 * 1000);
+    await this.prisma.refreshSession.create({ data: { userId: user.id, tokenHash: this.refreshTokenHash(refreshToken), expiresAt } });
+    return { user: this.safeUser(user), token: session.token, expiresAt: session.expiresAt, refreshToken };
+  }
+
+  private refreshTokenHash(token: string) {
+    return createHash('sha256').update(token).digest('hex');
   }
 
   private safeUser(user: { id: string; email: string | null; name: string; avatarUrl: string | null }): SafeAuthUser {

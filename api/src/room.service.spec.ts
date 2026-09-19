@@ -8,6 +8,7 @@ function prismaMock() {
       findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
     roomConfig: { create: vi.fn() },
     user: {
@@ -140,6 +141,28 @@ describe('RoomService.mine (minhas salas)', () => {
     expect(result[0].reportGeneratedAt).toBe('2026-09-01T11:00:00.000Z');
     expect(result[1].reportId).toBeNull();
     expect(result[1].isOwner).toBe(false);
+  });
+});
+
+describe('RoomService.remove', () => {
+  it('deletes a room only when account owns it', async () => {
+    const prisma = prismaMock();
+    prisma.room.findFirst.mockResolvedValue({ id: 'room-1', ownerId: 'participant-1' });
+    prisma.roomParticipant.findUnique.mockResolvedValue({ id: 'participant-1' });
+    const service = new RoomService(prisma as any, new SessionService());
+
+    await expect(service.remove('ABC1', 'user-1')).resolves.toEqual({ deleted: true, id: 'room-1' });
+    expect(prisma.room.delete).toHaveBeenCalledWith({ where: { id: 'room-1' } });
+  });
+
+  it('rejects deletion by room member who is not owner', async () => {
+    const prisma = prismaMock();
+    prisma.room.findFirst.mockResolvedValue({ id: 'room-1', ownerId: 'participant-owner' });
+    prisma.roomParticipant.findUnique.mockResolvedValue({ id: 'participant-member' });
+    const service = new RoomService(prisma as any, new SessionService());
+
+    await expect(service.remove('ABC1', 'user-1')).rejects.toMatchObject({ response: { message: 'FORBIDDEN' } });
+    expect(prisma.room.delete).not.toHaveBeenCalled();
   });
 });
 

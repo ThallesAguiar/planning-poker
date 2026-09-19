@@ -87,6 +87,14 @@ export class RoomService {
     }));
   }
 
+  async remove(idOrCode: string, userId: string, beforeDelete?: (roomId: string) => Promise<void>) {
+    const { room, participant } = await this.memberInRoom(idOrCode, userId);
+    if (room.ownerId !== participant.id) throw new ForbiddenException('FORBIDDEN');
+    await beforeDelete?.(room.id);
+    await this.prisma.room.delete({ where: { id: room.id } });
+    return { deleted: true, id: room.id };
+  }
+
   async joinSession(idOrCode: string, name: string, avatar = '', role = 'Dev', password?: string, accountUserId?: string, guestSessionId?: string) {
     const room = await this.prisma.room.findFirst({ where: { OR: [{ id: idOrCode }, { inviteCode: idOrCode.toUpperCase() }] }, include: { config: true } });
     if (!room) throw new NotFoundException('Room not found');
@@ -181,6 +189,39 @@ export class RoomService {
     await this.prisma.roomParticipant.update({ where: { id: participant.id }, data: { status: 'ativo', lastSeenAt: new Date() } });
     const issued = this.sessions.issueGuest(room.id, participant.id, userId);
     return { token: issued.token, sessionId: issued.sessionId, participantId: participant.id, roomId: room.id, role: participant.role };
+  }
+
+  async claimGuestOwnership(idOrCode: string, accountUserId: string, guestToken: string) {
+    let session;
+    try {
+      session = this.sessions.verify(guestToken);
+    } catch {
+      throw new ForbiddenException('FORBIDDEN');
+    }
+    if (!session.isGuest || !session.participantId || !session.roomId) throw new ForbiddenException('FORBIDDEN');
+
+    const room = await this.prisma.room.findFirst({ where: { OR: [{ id: idOrCode }, { inviteCode: idOrCode.toUpperCase() }] } });
+    if (!room || (session.roomId !== room.id && session.roomId !== room.inviteCode)) throw new ForbiddenException('FORBIDDEN');
+
+    const guestParticipant = await this.prisma.roomParticipant.findUnique({ where: { id: session.participantId } });
+    if (!guestParticipant || guestParticipant.roomId !== room.id || guestParticipant.userId !== session.sessionId) {
+      throw new ForbiddenException('FORBIDDEN');
+    }
+
+    const accountParticipant = await this.prisma.roomParticipant.findUnique({ where: { roomId_userId: { roomId: room.id, userId: accountUserId } } });
+    if (room.ownerId !== guestParticipant.id) {
+      if (accountParticipant?.id === room.ownerId) return { claimed: false, participantId: accountParticipant.id };
+      throw new ForbiddenException('FORBIDDEN');
+    }
+
+    if (accountParticipant) {
+      await this.prisma.roomParticipant.update({ where: { id: accountParticipant.id }, data: { role: 'PO', lastSeenAt: new Date() } });
+      await this.prisma.room.update({ where: { id: room.id }, data: { ownerId: accountParticipant.id } });
+      return { claimed: true, participantId: accountParticipant.id };
+    }
+
+    await this.prisma.roomParticipant.update({ where: { id: guestParticipant.id }, data: { userId: accountUserId, role: 'PO', lastSeenAt: new Date() } });
+    return { claimed: true, participantId: guestParticipant.id };
   }
 
   async updateRoomProfile(idOrCode: string, userId: string, input: { name?: string; avatar?: string }) {

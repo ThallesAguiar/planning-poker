@@ -77,6 +77,22 @@ export class RoomGateway {
     });
   }
 
+  /** Encerra sockets e snapshots vivos de uma sala que acabou de ser excluÃ­da. */
+  async closeRoom(roomId: string) {
+    const entries = [...this.states.entries()].filter(([, state]) => state.dbRoomId === roomId);
+    for (const [roomKey, state] of entries) {
+      state.participants.forEach((participant) => this.cancelPendingRemoval(participant.id));
+      this.states.delete(roomKey);
+      for (const [socketId, activeRoomKey] of this.clientRooms.entries()) {
+        if (activeRoomKey === roomKey) this.clientRooms.delete(socketId);
+      }
+      await this.roomStates.clear(roomKey);
+      if (state.roomId !== roomKey) await this.roomStates.clear(state.roomId);
+      this.server.to(roomKey).emit('room:error', { code: 'ROOM_NOT_FOUND', message: ERROR_MESSAGES.ROOM_NOT_FOUND });
+      this.server.in(roomKey).disconnectSockets(true);
+    }
+  }
+
   @SubscribeMessage('room:join')
   async join(@ConnectedSocket() client: Client, @MessageBody() payload: { roomId: string; name: string; avatar: string; role?: string; sessionId?: string; password?: string; token?: string }) {
     const roomKey = payload.roomId.trim();
@@ -765,6 +781,7 @@ export class RoomGateway {
     this.cancelPendingRemoval(participantId);
     const change = await this.presence.leave(state, participantId);
     if (!change) return;
+    if (![...this.states.values()].includes(state)) return;
     if (state.ownerId === participantId) await this.electOwner(state);
     this.emitParticipantUpdate(state, change);
     this.broadcastRoom(state);
