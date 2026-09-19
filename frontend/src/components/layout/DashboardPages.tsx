@@ -90,14 +90,19 @@ export function MyRoomsPage() {
 
   const renderAction = (room: { status: string; reportId: string | null; code: string }) => {
     if (room.status === "encerrada") {
-      return room.reportId ? (
-        <Link className="secondary room-action" to={`/report/${room.reportId}/${room.code}`} title="Abrir relatório final da sala">
-          Ver relatório
-        </Link>
-      ) : (
-        <button className="secondary room-action" type="button" disabled title="Esta sala ainda não gerou relatório">
-          Sem relatório
-        </button>
+      return (
+        <div className="room-actions">
+          <Link className="primary room-action" to={`/room/${room.code}`} title="Entrar na sala encerrada para continuar a discussão">Entrar</Link>
+          {room.reportId ? (
+            <Link className="secondary room-action" to={`/report/${room.reportId}/${room.code}`} title="Abrir relatório final da sala">
+              Ver relatório
+            </Link>
+          ) : (
+            <button className="secondary room-action" type="button" disabled title="Esta sala ainda não gerou relatório">
+              Sem relatório
+            </button>
+          )}
+        </div>
       );
     }
     return <Link className="primary room-action" to={`/room/${room.code}`} title="Entrar nesta sala">Entrar</Link>;
