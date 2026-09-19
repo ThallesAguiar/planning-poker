@@ -47,7 +47,7 @@ export class RoomGateway {
   /** Timers de remoção agendados para participantes desconectados (janela/aba fechadas). */
   private readonly pendingRemovalTimers = new Map<string, NodeJS.Timeout>();
   /** Janela de tolerância após a desconexão do socket antes de remover o participante da mesa. */
-  private readonly disconnectGraceMs = Number(process.env.ROOM_DISCONNECT_GRACE_MS ?? 30000) || 30000;
+  private readonly disconnectGraceMs = Number(process.env.ROOM_DISCONNECT_GRACE_MS ?? 0) || 0;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -723,7 +723,7 @@ export class RoomGateway {
     return this.authorization.canControlRoom(participant.id, participant.role, state.ownerId, role) ? state : undefined;
   }
 
-  /** Desconexão de socket (janela/aba fechada, refresh ou queda de rede): marca offline e agenda remoção após a tolerância. */
+  /** Desconexão de socket (janela/aba fechada, refresh ou queda de rede): remove o participante da mesa (estilo Zoom/Meet). Um refresh reconecta e reentra com o token salvo. */
   private removeClient(client: Client) {
     const roomId = this.clientRooms.get(client.id);
     if (!roomId) return;
@@ -805,12 +805,28 @@ export class RoomGateway {
     this.emitParticipantUpdate(state, { participant: { ...next }, reason: 'owner' });
   }
 
+  /**
+   * Remove do roster vivo participantes que nao estao conectados (sem socket ativo
+   * neste processo). Estilo Zoom/Meet: quem saiu/ficou offline nao permanece na sala.
+   * Mantém as linhas de RoomParticipant no banco (historico, "Minhas Salas" e rejoin).
+   */
+  private pruneDisconnected(state: InternalRoomState) {
+    const hasHumanConnected = state.participants.some((participant) => !participant.isAI && (participant.connected || this.presence.socketCount(participant.id) > 0));
+    state.participants = state.participants.filter((participant) => {
+      const isLive = participant.connected || this.presence.socketCount(participant.id) > 0;
+      // A IA participante permanece apenas enquanto houver humano presente na mesa.
+      if (participant.isAI) return hasHumanConnected && isLive;
+      return isLive;
+    });
+  }
+
   private async loadState(roomKey: string): Promise<InternalRoomState> {
     const cached = this.states.get(roomKey);
     if (cached) return cached;
     const restored = await this.roomStates.restore(roomKey);
     if (restored?.dbRoomId && restored?.config && restored?.participants && restored?.stories) {
       const state = restored as unknown as InternalRoomState;
+      this.pruneDisconnected(state);
       this.states.set(roomKey, state);
       return state;
     }
@@ -885,6 +901,7 @@ export class RoomGateway {
       state.participants.forEach((item) => { item.hasVoted = state.votes.some((vote) => vote.participantId === item.id); });
       await this.round.resumeFromStorage(state, round);
     }
+    this.pruneDisconnected(state);
     this.states.set(roomKey, state);
     return state;
   }

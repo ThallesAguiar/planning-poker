@@ -146,7 +146,7 @@ create: vi.fn(async (args: any) => {
     broadcast: (state) => (gateway as any).broadcastRoom(state),
   });
 
-  return { prisma, gateway, server, sessions, storyId: () => stories[0]?.id, newClient, ai, room, disconnectedRooms };
+  return { prisma, gateway, server, sessions, storyId: () => stories[0]?.id, newClient, ai, room, roomStates, disconnectedRooms };
 }
 
 type ClientContext = {
@@ -317,7 +317,39 @@ await h.gateway.removeParticipant(po.client as any, { participantId: removedId }
     expect(errorCodes(dev)).toContain('NOT_PARTICIPANT');
   });
 
-it('removes a participant automatically after the disconnect grace window (window close)', async () => {
+it('prune disconnected participants when restoring a snapshot (zoom/meet style)', async () => {
+    const h = buildHarness();
+    await h.roomStates.save('CODE', {
+      roomId: 'CODE',
+      dbRoomId: 'room-1',
+      name: 'Sala',
+      code: 'CODE',
+      status: 'aberta',
+      visibility: 'PUBLIC',
+      ownerId: 'p1',
+      config: h.room.config,
+      phase: 'lobby',
+      stories: [],
+      passwordHash: null,
+      participants: [
+        { id: 'p-on', userId: 'u-on', name: 'Conectado', avatar: '♠', role: 'PO', isAI: false, connected: true, hasVoted: false, status: 'ativo' },
+        { id: 'p-off', userId: 'u-off', name: 'Fantasmasa', avatar: '♥', role: 'Dev', isAI: false, connected: false, hasVoted: false, status: 'ativo' },
+        { id: 'p-ia', userId: 'u-ia', name: 'Qodex', avatar: 'Q', role: 'IA_Agente', isAI: true, connected: false, hasVoted: false, status: 'ativo' },
+      ],
+      votes: [],
+      messages: [],
+      roleRequests: [],
+    });
+
+    const po = newClient('sock-po');
+    await joinRoom(h, po);
+
+    const state = (h.gateway as any).states.get('CODE');
+    const ids = state.participants.map((p: any) => p.id).sort();
+    expect(ids).toEqual(['p-on', 'p1']); // fantasma humano e IA inativa removidos; PO da snapshot + novo join presentes
+  });
+
+  it('removes a participant automatically after the disconnect grace window (window close)', async () => {
     vi.useFakeTimers();
     try {
       const h = buildHarness();
