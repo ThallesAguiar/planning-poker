@@ -259,9 +259,9 @@ describe('RoundService', () => {
     await round.castVote(state, state.participants[1], 's2', 3);
     await round.forceReveal(state);
     await round.finalize(state, 3, 'decisao_po');
-    expect(state.phase).toBe('finalizada');
-    expect(state.status).toBe('encerrada');
-    expect(prisma.room.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'encerrada' } }));
+    expect(state.phase).toBe('lobby');
+    expect(state.status).toBe('em_andamento');
+    expect(prisma.room.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'em_andamento' } }));
   });
 
   it('skip marks story pulada and returns to lobby', async () => {

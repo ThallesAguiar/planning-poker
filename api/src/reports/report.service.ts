@@ -34,7 +34,6 @@ export class ReportService {
       summary.insights = await this.insights.generate(summary, room.config);
     }
     const report = await this.prisma.sprintReport.create({ data: { roomId: room.id, summary } });
-    await this.prisma.room.update({ where: { id: room.id }, data: { status: 'encerrada' } });
     return report;
   }
 

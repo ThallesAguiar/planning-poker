@@ -147,9 +147,9 @@ export class RoundService {
     story.criterion = criterion;
     await this.clearRound(state);
     const next = state.stories.find((item) => item.status === 'pendente');
-    state.phase = next ? 'lobby' : 'finalizada';
+    state.phase = 'lobby';
     state.currentStoryId = next?.id;
-    state.status = next ? 'em_andamento' : 'encerrada';
+    state.status = 'em_andamento';
     await this.prisma.room.update({ where: { id: state.dbRoomId }, data: { status: state.status } });
     this.emitter.broadcast(state);
     return {};
