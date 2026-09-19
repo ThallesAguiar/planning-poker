@@ -9,6 +9,7 @@ import {
   saveRoomStudioRules,
   testRoomStudioProvider,
   type RoomStudioSnapshot,
+  type ResponseLanguage,
   type StudioProvider,
 } from "../../api/room-studio";
 import { studioAvatars } from '../../data/avatars';
@@ -74,6 +75,7 @@ export function RoomStudioForm({ roomId, accountToken }: RoomStudioFormProps) {
   const [agentName, setAgentName] = useState("");
   const [agentAvatar, setAgentAvatar] = useState("♠");
   const [agentPrompt, setAgentPrompt] = useState("");
+  const [agentLanguage, setAgentLanguage] = useState<ResponseLanguage>("pt-BR");
   const [agentMsg, setAgentMsg] = useState<Feedback>(null);
 
   const [rulesMode, setRulesMode] = useState<StudioMode>("account");
@@ -95,6 +97,7 @@ export function RoomStudioForm({ roomId, accountToken }: RoomStudioFormProps) {
       setAgentName(snapshotResult.agent?.name ?? "");
       setAgentAvatar(snapshotResult.agent?.avatar ?? "♠");
       setAgentPrompt(snapshotResult.agent?.systemPrompt ?? "");
+      setAgentLanguage(snapshotResult.agent?.responseLanguage ?? "pt-BR");
       setRulesMode(snapshotResult.rules.length > 0 ? "room" : "account");
       setRulesText(snapshotResult.rules.join("\n"));
       setError(null);
@@ -198,6 +201,7 @@ export function RoomStudioForm({ roomId, accountToken }: RoomStudioFormProps) {
         name: agentName.trim(),
         avatar: agentAvatar.trim() || "♠",
         systemPrompt: agentPrompt,
+        responseLanguage: agentLanguage,
       });
       await loadStudio();
       setAgentMode("room");
@@ -261,7 +265,7 @@ export function RoomStudioForm({ roomId, accountToken }: RoomStudioFormProps) {
           <ModeSwitch mode={agentMode} accountLabel={`Usar ${accountAgent?.name ?? "agente da minha conta"}`} roomLabel="Configurar nesta mesa" onChange={(mode) => void chooseAgentMode(mode)} />
           {agentMode === "account" ? (
             accountAgent ? (
-              <div className="studio-preview"><b>{accountAgent.avatar} {accountAgent.name}</b><small>{accountAgent.systemPrompt || "Sem prompt de persona."}</small></div>
+              <div className="studio-preview"><b>{accountAgent.avatar} {accountAgent.name}</b><small>Respostas: {accountAgent.responseLanguage === "en" ? "inglês" : "português (Brasil)"}</small><small>{accountAgent.systemPrompt || "Sem prompt de persona."}</small></div>
             ) : (
               <p className="studio-hint">Nenhum agente salvo na sua conta.</p>
             )
@@ -270,6 +274,7 @@ export function RoomStudioForm({ roomId, accountToken }: RoomStudioFormProps) {
               <label>Nome do agente da mesa<input value={agentName} onChange={(e) => setAgentName(e.target.value)} maxLength={60} /></label>
               <label>Avatar<div className="avatar-pick"><div>{studioAvatars.map((item) => <button type="button" className={agentAvatar === item ? "active" : ""} onClick={() => setAgentAvatar(item)} key={item}>{item}</button>)}</div></div></label>
               <label>Prompt de persona da mesa<textarea value={agentPrompt} onChange={(e) => setAgentPrompt(e.target.value)} maxLength={4000} placeholder="Você é um contribuidor sênior desta mesa..." /></label>
+              <label>Idioma das respostas<select value={agentLanguage} onChange={(event) => setAgentLanguage(event.target.value as ResponseLanguage)}><option value="pt-BR">Português (Brasil)</option><option value="en">Inglês</option></select></label>
               <button className="secondary" type="button" onClick={() => void saveAgent()} disabled={!agentName.trim()}>Salvar agente</button>
             </>
           )}

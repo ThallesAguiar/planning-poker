@@ -76,6 +76,7 @@ model AiAgent {
   name String @default("Agente IA")
   avatar String @default("🤖")
   systemPrompt String @default("You are an expert planning-poker contributor analyzing user stories, voting realistically against the deck, and explaining estimates.")
+  responseLanguage String @default("pt-BR")
   updatedAt DateTime @updatedAt
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -115,6 +116,7 @@ model RoomAiAgent {
   name         String   @default("Agente IA")
   avatar       String   @default("🤖")
   systemPrompt String   @default("You are an expert planning-poker contributor analyzing user stories, voting realistically against the deck, and explaining estimates.")
+  responseLanguage String @default("pt-BR")
   updatedAt    DateTime @updatedAt
   room         Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getStudio, saveStudioAgent, saveStudioProvider, saveStudioRules, testStudioProvider, type StudioProvider } from "../../api/studio";
+import { getStudio, saveStudioAgent, saveStudioProvider, saveStudioRules, testStudioProvider, type ResponseLanguage, type StudioProvider } from "../../api/studio";
 import { useAppStore } from "../../stores/app-store";
 import { DashboardShell } from "../../components/layout/DashboardPages";
 import { studioAvatars } from "../../data/avatars";
@@ -23,6 +23,7 @@ export function StudioPage() {
   const [agentName, setAgentName] = useState("");
   const [agentAvatar, setAgentAvatar] = useState("♠");
   const [agentPrompt, setAgentPrompt] = useState("");
+  const [agentLanguage, setAgentLanguage] = useState<ResponseLanguage>("pt-BR");
   const [agentMsg, setAgentMsg] = useState<Feedback>(null);
 
   const [rulesText, setRulesText] = useState("");
@@ -49,6 +50,7 @@ export function StudioPage() {
           setAgentName(snapshot.agent.name);
           setAgentAvatar(snapshot.agent.avatar);
           setAgentPrompt(snapshot.agent.systemPrompt);
+          setAgentLanguage(snapshot.agent.responseLanguage);
         }
         setRulesText(snapshot.rules.join("\n"));
       })
@@ -114,6 +116,7 @@ export function StudioPage() {
         name: agentName.trim(),
         avatar: agentAvatar.trim() || "♠",
         systemPrompt: agentPrompt,
+        responseLanguage: agentLanguage,
       });
       setAgentMsg({ kind: "ok", text: "Agente salvo." });
     } catch {
@@ -212,6 +215,13 @@ export function StudioPage() {
               maxLength={4000}
               placeholder="Você é um contribuidor sênior de planning poker..."
             />
+          </label>
+          <label>
+            Idioma das respostas
+            <select value={agentLanguage} onChange={(event) => setAgentLanguage(event.target.value as ResponseLanguage)}>
+              <option value="pt-BR">Português (Brasil)</option>
+              <option value="en">Inglês</option>
+            </select>
           </label>
           <button className="primary" type="button" onClick={() => void saveAgent()} disabled={!agentName.trim()}>Salvar agente</button>
           {agentMsg && <p className={agentMsg.kind === "ok" ? "account-ok" : "account-error"} role="status">{agentMsg.text}</p>}

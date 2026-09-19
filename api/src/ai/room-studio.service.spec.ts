@@ -70,6 +70,14 @@ describe('RoomStudioService', () => {
     expect(summary).toMatchObject({ name: 'Robot', avatar: '🃏' });
   });
 
+  it('defaults room agent language to Brazilian Portuguese', async () => {
+    const prisma = prismaMock();
+    prisma.roomAiAgent.findUnique.mockResolvedValue(null);
+    prisma.roomAiAgent.create.mockResolvedValue({ roomId: 'r', name: 'Agente', avatar: 'A', systemPrompt: '', responseLanguage: 'pt-BR' });
+    await new RoomStudioService(prisma as any, {} as any).saveAgent('r', { name: 'Agente' });
+    expect(prisma.roomAiAgent.create).toHaveBeenCalledWith({ data: expect.objectContaining({ responseLanguage: 'pt-BR' }) });
+  });
+
   it('saveRules replaces all rules via transaction in order', async () => {
     const prisma = prismaMock();
     const tx = { roomBusinessRule: { deleteMany: vi.fn(), createMany: vi.fn() } };

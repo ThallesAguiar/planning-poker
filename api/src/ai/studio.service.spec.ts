@@ -53,6 +53,16 @@ describe('StudioService', () => {
     expect(summary).toMatchObject({ name: 'Robot', avatar: '🦄' });
   });
 
+  it('defaults new agent language to Brazilian Portuguese', async () => {
+    const prisma = prismaMock();
+    prisma.aiAgent.findUnique.mockResolvedValueOnce(null).mockResolvedValue({ userId: 'u', name: 'Agente', avatar: 'A', systemPrompt: '', responseLanguage: 'pt-BR' });
+    prisma.aiAgent.create.mockResolvedValue({ userId: 'u', name: 'Agente', avatar: 'A', systemPrompt: '', responseLanguage: 'pt-BR' });
+    prisma.llmProvider.findFirst.mockResolvedValue(null);
+    prisma.businessRule.findMany.mockResolvedValue([]);
+    await new StudioService(prisma as any, {} as any).saveAgent('u', { name: 'Agente' });
+    expect(prisma.aiAgent.create).toHaveBeenCalledWith({ data: expect.objectContaining({ responseLanguage: 'pt-BR' }) });
+  });
+
   it('saveRules replaces all rules via transaction in order', async () => {
     const prisma = prismaMock();
     const tx = { businessRule: { deleteMany: vi.fn(), createMany: vi.fn() } };

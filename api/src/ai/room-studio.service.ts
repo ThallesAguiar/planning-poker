@@ -37,11 +37,11 @@ export class RoomStudioService {
     const accountRulesText = (accountRules ?? []).map((rule: { content: string }) => rule.content);
     return {
       provider: provider ? snapshotProvider(provider) : null,
-      agent: agent ? { name: agent.name, avatar: agent.avatar, systemPrompt: agent.systemPrompt } : null,
+      agent: agent ? { name: agent.name, avatar: agent.avatar, systemPrompt: agent.systemPrompt, responseLanguage: agent.responseLanguage === 'en' ? 'en' : 'pt-BR' } : null,
       rules: roomRules,
       account: {
         provider: accountProvider ? snapshotProvider(accountProvider) : null,
-        agent: accountAgent ? { name: accountAgent.name, avatar: accountAgent.avatar, systemPrompt: accountAgent.systemPrompt } : null,
+        agent: accountAgent ? { name: accountAgent.name, avatar: accountAgent.avatar, systemPrompt: accountAgent.systemPrompt, responseLanguage: accountAgent.responseLanguage === 'en' ? 'en' : 'pt-BR' } : null,
         rules: accountRulesText,
       },
       sources: {
@@ -65,20 +65,21 @@ export class RoomStudioService {
     return snapshotProvider(saved);
   }
 
-  async saveAgent(roomId: string, input: { name: string; avatar?: string; systemPrompt?: string }): Promise<AgentSummary | null> {
+  async saveAgent(roomId: string, input: { name: string; avatar?: string; systemPrompt?: string; responseLanguage?: 'pt-BR' | 'en' }): Promise<AgentSummary | null> {
     const existing = await this.prisma.roomAiAgent.findUnique({ where: { roomId } });
     const data = {
       name: input.name,
       avatar: input.avatar ?? '🤖',
       systemPrompt: input.systemPrompt ?? existing?.systemPrompt ?? '',
+      responseLanguage: input.responseLanguage ?? existing?.responseLanguage ?? 'pt-BR',
     };
-    let saved: { name: string; avatar: string; systemPrompt: string };
+    let saved: { name: string; avatar: string; systemPrompt: string; responseLanguage: string };
     if (existing) {
       saved = await this.prisma.roomAiAgent.update({ where: { roomId }, data });
     } else {
       saved = await this.prisma.roomAiAgent.create({ data: { roomId, ...data } });
     }
-    return { name: saved.name, avatar: saved.avatar, systemPrompt: saved.systemPrompt };
+    return { name: saved.name, avatar: saved.avatar, systemPrompt: saved.systemPrompt, responseLanguage: saved.responseLanguage === 'en' ? 'en' : 'pt-BR' };
   }
 
   async saveRules(roomId: string, contents: string[]): Promise<string[]> {

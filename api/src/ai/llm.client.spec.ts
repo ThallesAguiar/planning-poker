@@ -13,6 +13,20 @@ describe('LlmClient', () => {
     vi.unstubAllEnvs(); vi.unstubAllGlobals();
   });
 
+  it('uses Brazilian Portuguese by default and honors agent language override', async () => {
+    vi.stubEnv('LLM_API_KEY', 'test-key');
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '{"vote": 3, "justification": "ok"}' } }] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new LlmClient();
+    await client.vote({ story: 'x', role: 'Dev', deck: [1, 3, 5] });
+    await client.vote({ story: 'x', role: 'Dev', deck: [1, 3, 5] }, { responseLanguage: 'en' });
+    const defaultSystem = JSON.parse(fetchMock.mock.calls[0][1].body).messages[0].content;
+    const englishSystem = JSON.parse(fetchMock.mock.calls[1][1].body).messages[0].content;
+    expect(defaultSystem).toContain('português do Brasil');
+    expect(englishSystem).toContain('English');
+    vi.unstubAllEnvs(); vi.unstubAllGlobals();
+  });
+
   it('reserves enough completion budget for reasoning providers during votes', async () => {
     vi.stubEnv('LLM_API_KEY', 'test-key');
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '{"vote": 1, "justification": "ok"}' } }] }) });

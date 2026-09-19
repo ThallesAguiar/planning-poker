@@ -4,7 +4,8 @@ import { PrismaService } from '../prisma.service.js';
 import { maskApiKey, normalizeBaseUrl } from './studio-utils.js';
 
 export type ProviderSummary = { name: string; baseUrl: string; model: string; isActive: boolean; hasApiKey: boolean; apiKeyMasked: string };
-export type AgentSummary = { name: string; avatar: string; systemPrompt: string };
+export type ResponseLanguage = 'pt-BR' | 'en';
+export type AgentSummary = { name: string; avatar: string; systemPrompt: string; responseLanguage: ResponseLanguage };
 export type StudioSnapshot = { provider: ProviderSummary | null; agent: AgentSummary | null; rules: string[] };
 
 @Injectable()
@@ -19,7 +20,7 @@ export class StudioService {
     ]);
     return {
       provider: provider ? { name: provider.name, baseUrl: provider.baseUrl, model: provider.model, isActive: provider.isActive, hasApiKey: Boolean(provider.apiKey), apiKeyMasked: maskApiKey(provider.apiKey) } : null,
-      agent: agent ? { name: agent.name, avatar: agent.avatar, systemPrompt: agent.systemPrompt } : null,
+      agent: agent ? { name: agent.name, avatar: agent.avatar, systemPrompt: agent.systemPrompt, responseLanguage: agent.responseLanguage === 'en' ? 'en' : 'pt-BR' } : null,
       rules: rules.map((rule) => rule.content),
     };
   }
@@ -39,12 +40,13 @@ export class StudioService {
     return snapshot.provider;
   }
 
-  async saveAgent(userId: string, input: { name: string; avatar?: string; systemPrompt?: string }): Promise<AgentSummary | null> {
+  async saveAgent(userId: string, input: { name: string; avatar?: string; systemPrompt?: string; responseLanguage?: ResponseLanguage }): Promise<AgentSummary | null> {
     const existing = await this.prisma.aiAgent.findUnique({ where: { userId } });
     const data = {
       name: input.name,
       avatar: input.avatar ?? '🤖',
       systemPrompt: input.systemPrompt ?? existing?.systemPrompt ?? '',
+      responseLanguage: input.responseLanguage ?? (existing?.responseLanguage as ResponseLanguage | undefined) ?? 'pt-BR',
     };
     if (existing) {
       await this.prisma.aiAgent.update({ where: { userId }, data });

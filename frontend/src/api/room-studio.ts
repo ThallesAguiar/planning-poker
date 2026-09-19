@@ -11,7 +11,8 @@ export type StudioProvider = {
   apiKeyMasked: string;
 };
 
-export type StudioAgent = { name: string; avatar: string; systemPrompt: string };
+export type ResponseLanguage = "pt-BR" | "en";
+export type StudioAgent = { name: string; avatar: string; systemPrompt: string; responseLanguage: ResponseLanguage };
 
 export type RoomStudioSnapshot = {
   provider: StudioProvider | null;
@@ -41,6 +42,7 @@ export type SaveAgentInput = {
   name: string;
   avatar?: string;
   systemPrompt?: string;
+  responseLanguage?: ResponseLanguage;
 };
 
 export type TestProviderInput = { baseUrl?: string; apiKey?: string; model?: string };

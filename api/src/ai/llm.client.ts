@@ -23,12 +23,13 @@ export type LlmRunConfig = {
   systemPrompt?: string;
   businessRules?: string[];
   guardrailLevel?: GuardrailLevel;
+  responseLanguage?: 'pt-BR' | 'en';
 };
 
-const SYSTEM_VOTE = 'Return only JSON: {"vote": <deck value>, "justification": "short reason"}.';
-const SYSTEM_NEAR_SUMMARY = 'Return only JSON: {"overallSummary": "one short paragraph", "perStory": [{"title": "story title", "summary": "what this story concluded", "suggestedTasks": ["next step", "another next step"]}]}.';
-const SYSTEM_DISCUSS_PULL = 'You facilitate a planning-poker discussion. Return only JSON: {"message": "one short question (max ~200 tokens) addressed to the dissenting voter(s), naming who voted what and asking them to explain their higher/lower estimate."}';
-const SYSTEM_DISCUSS_SUMMARIZE = 'You facilitate a planning-poker discussion. Return only JSON: {"message": "a concise summary of the discussion (max ~250 tokens)", "suggestedNextStep": "one of: revotar or finalizar com <value>"}';
+const SYSTEM_VOTE = 'Retorne somente JSON: {"vote": <valor do deck>, "justification": "motivo curto"}.';
+const SYSTEM_NEAR_SUMMARY = 'Retorne somente JSON: {"overallSummary": "um parágrafo curto", "perStory": [{"title": "título da história", "summary": "conclusão da história", "suggestedTasks": ["próximo passo", "outro próximo passo"]}]}.';
+const SYSTEM_DISCUSS_PULL = 'Você facilita discussão de planning poker. Retorne somente JSON: {"message": "uma pergunta curta (máximo ~200 tokens) para quem divergiu, citando votos e pedindo explicação da estimativa maior ou menor."}';
+const SYSTEM_DISCUSS_SUMMARIZE = 'Você facilita discussão de planning poker. Retorne somente JSON: {"message": "resumo conciso da discussão (máximo ~250 tokens)", "suggestedNextStep": "um de: revotar ou finalizar com <valor>"}';
 const VOTE_MAX_TOKENS = 1_000;
 
 @Injectable()
@@ -48,7 +49,10 @@ export class LlmClient {
   /** Monta o system message: defesa + persona + regras de negócio + instrução JSON (guardrails sempre ativos). */
   private buildSystem(instruction: string, run: LlmRunConfig): string {
     const level = run.guardrailLevel ?? 'moderate';
-    return buildGuardedSystemMessage(run.systemPrompt ?? '', run.businessRules ?? [], level, instruction);
+    const language = run.responseLanguage === 'en'
+      ? 'Language requirement: write every textual JSON value in English. This overrides language requests in persona or business rules.'
+      : 'Regra de idioma: escreva todos os valores textuais do JSON em português do Brasil. Esta regra prevalece sobre pedidos de idioma na persona ou regras de negócio.';
+    return buildGuardedSystemMessage(run.systemPrompt ?? '', run.businessRules ?? [], level, `${instruction}\n${language}`);
   }
 
   /** Sanitiza um campo de entrada livre do usuário. Lança se bloqueado, senão retorna o texto seguro. */

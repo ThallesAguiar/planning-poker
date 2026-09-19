@@ -119,13 +119,14 @@ describe('AiParticipantService precedência mesa > conta > ambiente', () => {
   }
 
   it('mesa com persona própria usa a persona da mesa sobre a conta', async () => {
-    const prisma = roomStudioPrisma({ agent: { name: 'Robô da Mesa', avatar: '🃏', systemPrompt: 'Sou da mesa' } }, { isGuest: false });
+    const prisma = roomStudioPrisma({ agent: { name: 'Robô da Mesa', avatar: '🃏', systemPrompt: 'Sou da mesa', responseLanguage: 'en' } }, { isGuest: false });
     const llm = { vote: vi.fn().mockResolvedValue({ vote: 5, justification: 'ok' }) } as any;
     const result = await new AiParticipantService(prisma, llm).castVote('room-1', 'story-1', 'round-1');
     expect(result).toMatchObject({ participantName: 'Robô da Mesa', avatar: '🃏' });
-    const run = llm.vote.mock.calls[0][1] as { systemPrompt?: string; options?: any; businessRules?: string[] };
+    const run = llm.vote.mock.calls[0][1] as { systemPrompt?: string; options?: any; businessRules?: string[]; responseLanguage?: string };
     expect(run.systemPrompt).toBe('Sou da mesa');
     expect(run.options).toMatchObject({ baseUrl: 'https://account.test/v1' });
+    expect(run.responseLanguage).toBe('en');
   });
 
   it('mesa sem regras próprias herda as regras da conta', async () => {

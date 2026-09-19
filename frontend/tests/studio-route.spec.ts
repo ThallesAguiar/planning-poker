@@ -63,6 +63,20 @@ test('room Studio loads for owner and survives refresh', async ({ browser, reque
   await context.close();
 });
 
+test('account Studio defaults new agent responses to Brazilian Portuguese', async ({ browser, request }) => {
+  const account = await registerAccount(request, 'Language Studio');
+  const context = await browser.newContext();
+  await setAccount(context, account);
+  const page = await context.newPage();
+
+  await page.goto(`${appUrl}/studio`);
+  const language = page.getByLabel('Idioma das respostas');
+  await expect(language).toHaveValue('pt-BR');
+  await language.selectOption('en');
+  await expect(language).toHaveValue('en');
+  await context.close();
+});
+
 test('room Studio blocks guest, non-owner, and unknown room without form', async ({ browser, request }) => {
   const owner = await registerAccount(request, 'Owner Guard');
   const room = await createOwnedRoom(request, owner);

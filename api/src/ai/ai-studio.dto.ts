@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class SaveProviderDto {
   @IsString()
@@ -58,6 +58,10 @@ export class SaveAgentDto {
   @IsString()
   @MaxLength(4000)
   systemPrompt?: string;
+
+  @IsOptional()
+  @IsIn(['pt-BR', 'en'])
+  responseLanguage?: 'pt-BR' | 'en';
 }
 
 export class SaveRulesDto {

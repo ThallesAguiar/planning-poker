@@ -3,10 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { LlmClient, type LlmRunConfig } from './llm.client.js';
 import { PrismaService } from '../prisma.service.js';
 
-const DEFAULT_AGENT = { name: 'Agente IA', avatar: '🤖', systemPrompt: 'You are an expert planning-poker contributor analyzing user stories, voting realistically against the deck, and explaining estimates.' };
+const DEFAULT_AGENT = { name: 'Agente IA', avatar: '🤖', systemPrompt: 'Você é um participante especialista em planning poker. Analise histórias, vote de forma realista usando o deck e explique estimativas.' };
+const DEFAULT_RESPONSE_LANGUAGE = 'pt-BR' as const;
 
 type RoomAiContext = {
-  agent: { name: string; avatar: string; systemPrompt: string };
+  agent: { name: string; avatar: string; systemPrompt: string; responseLanguage: 'pt-BR' | 'en' };
   run: LlmRunConfig;
 };
 
@@ -33,7 +34,7 @@ export class AiParticipantService {
     const ownerReal = Boolean(ownerUser && !ownerUser.isGuest);
 
     let accountProvider: { baseUrl: string; apiKey: string; model: string } | null = null;
-    let accountAgent: { name?: string; avatar?: string; systemPrompt?: string } | null = null;
+    let accountAgent: { name?: string; avatar?: string; systemPrompt?: string; responseLanguage?: string } | null = null;
     let accountRules: { content: string }[] = [];
     if (ownerReal && ownerUser) {
       [accountProvider, accountAgent, accountRules] = await Promise.all([
@@ -43,10 +44,12 @@ export class AiParticipantService {
       ]);
     }
 
+    const responseLanguage: 'pt-BR' | 'en' = roomAgent?.responseLanguage === 'en' || accountAgent?.responseLanguage === 'en' ? 'en' : DEFAULT_RESPONSE_LANGUAGE;
     const agent = {
       name: roomAgent?.name || accountAgent?.name || DEFAULT_AGENT.name,
       avatar: roomAgent?.avatar || accountAgent?.avatar || DEFAULT_AGENT.avatar,
       systemPrompt: roomAgent?.systemPrompt || accountAgent?.systemPrompt || DEFAULT_AGENT.systemPrompt,
+      responseLanguage,
     };
     const provider = roomProvider ?? accountProvider;
     const roomRuleItems: string[] = roomRules && roomRules.length > 0 ? roomRules.map((rule: { content: string }) => rule.content) : [];
@@ -57,6 +60,7 @@ export class AiParticipantService {
       run: {
         options: provider ? { baseUrl: provider.baseUrl, apiKey: provider.apiKey, model: provider.model } : undefined,
         systemPrompt: agent.systemPrompt !== DEFAULT_AGENT.systemPrompt ? agent.systemPrompt : undefined,
+        responseLanguage: agent.responseLanguage,
         businessRules: rules,
       },
     };
